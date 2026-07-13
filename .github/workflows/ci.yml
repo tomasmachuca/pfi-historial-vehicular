@@ -40,7 +40,7 @@ jobs:
         run: pytest --cov=app --cov-report=xml --cov-report=term
 
       - name: Publicar reporte de cobertura
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-backend
           path: backend/coverage.xml
@@ -77,7 +77,7 @@ jobs:
         run: npm test -- --coverage
 
       - name: Publicar reporte de cobertura
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-frontend
           path: frontend/coverage/lcov.info
