@@ -1,0 +1,35 @@
+# ===== Python (backend) =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.env
+
+# ===== Node.js (frontend y contracts) =====
+node_modules/
+dist/
+build/
+coverage/
+.eslintcache
+
+# ===== Hardhat (contracts) =====
+artifacts/
+cache/
+typechain-types/
+
+# ===== IDE y sistema =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ===== Secretos - NUNCA commitear =====
+*.pem
+*.key
+.env.local
+.env.production
