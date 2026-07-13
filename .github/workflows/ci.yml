@@ -127,13 +127,13 @@ jobs:
           fetch-depth: 0
 
       - name: Descargar reporte de cobertura del backend
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: coverage-backend
           path: coverage-backend
 
       - name: Descargar reporte de cobertura del frontend
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: coverage-frontend
           path: coverage-frontend
