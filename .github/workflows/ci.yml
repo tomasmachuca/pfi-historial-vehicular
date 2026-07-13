@@ -18,7 +18,7 @@ jobs:
         working-directory: backend
     steps:
       - name: Descargar codigo fuente
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -56,7 +56,7 @@ jobs:
         working-directory: frontend
     steps:
       - name: Descargar codigo fuente
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -93,7 +93,7 @@ jobs:
         working-directory: contracts
     steps:
       - name: Descargar codigo fuente
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -122,7 +122,7 @@ jobs:
     needs: [backend, frontend, contracts]
     steps:
       - name: Descargar codigo fuente
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
