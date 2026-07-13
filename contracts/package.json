@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.17"
+    "hardhat": "^3.9.1"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.1.0"
