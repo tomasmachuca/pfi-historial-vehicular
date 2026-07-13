@@ -1,0 +1,16 @@
+{
+  "name": "contracts",
+  "version": "0.1.0",
+  "description": "Smart contracts del Sistema de Historial Vehicular (Hardhat + Solidity)",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.17"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0"
+  }
+}

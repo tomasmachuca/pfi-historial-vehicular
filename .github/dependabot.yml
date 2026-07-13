@@ -1,0 +1,48 @@
+version: 2
+updates:
+  # Backend - dependencias de Python (FastAPI)
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "tomasmachuca"
+    labels:
+      - "dependencias"
+      - "backend"
+
+  # Frontend - dependencias de Node.js (React)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "tomasmachuca"
+    labels:
+      - "dependencias"
+      - "frontend"
+
+  # Smart Contracts - dependencias de Node.js (Hardhat)
+  - package-ecosystem: "npm"
+    directory: "/contracts"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "tomasmachuca"
+    labels:
+      - "dependencias"
+      - "smart-contracts"
+
+  # Mantener actualizadas las propias GitHub Actions del pipeline
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "tomasmachuca"
+    labels:
+      - "ci-cd"
