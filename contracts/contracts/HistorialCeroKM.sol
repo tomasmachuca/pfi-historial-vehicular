@@ -1,121 +1,139 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-
-/// @title HistorialCeroKM
-/// @notice Registro inmutable de eventos de mantenimiento vehicular.
-/// @dev Solo concesionarias autorizadas pueden registrar eventos.
-contract HistorialCeroKM is Ownable, Pausable {
+/**
+ * HistorialCeroKM
+ * Registro inmutable de eventos de mantenimiento oficial sobre vehículos 0km.
+ * Solo billeteras de concesionarias autorizadas pueden registrar eventos.
+ */
+contract HistorialCeroKM {
     struct Evento {
         uint256 kilometraje;
-        uint8 tipoServicio;
+        uint8   tipoServicio;
         bytes32 hashEvidencia;
         address concesionaria;
         uint256 timestamp;
     }
 
-    // Mapping VIN -> arreglo de eventos
-    mapping(string => Evento[]) private historial;
-    // Mapping de concesionarias autorizadas
-    mapping(address => bool) public concesionariasOficiales;
-    // Metricas operativas por concesionaria
-    mapping(address => uint256) public operacionesPorConcesionaria;
-    mapping(address => uint256) public ultimaOperacionConcesionaria;
+    struct Vehiculo {
+        bool   existe;
+        uint256 kmInicial;
+        address concesionariaAlta;
+        uint256 fechaAlta;
+    }
 
-    // ========= Events =========
-    event ConcesionariaAutorizada(address indexed dealer, uint256 ts);
-    event ConcesionariaRevocada(address indexed dealer, uint256 ts);
+    address public admin;
+
+    mapping(string  => Evento[])  private historial;
+    mapping(string  => Vehiculo)  public  vehiculos;
+    mapping(address => bool)      public  concesionariasOficiales;
+    mapping(address => string)    public  nombreConcesionaria;
+
+    event ConcesionariaAutorizada(address indexed wallet, string nombre);
+    event ConcesionariaRevocada(address indexed wallet);
+    event VehiculoRegistrado(string indexed vin, address indexed concesionaria, uint256 kmInicial);
     event ServicioRegistrado(
-        string indexed vin,
-        uint256 km,
-        uint8 tipoServicio,
+        string  indexed vin,
         address indexed concesionaria,
+        uint256 kilometraje,
+        uint8   tipoServicio,
         bytes32 hashEvidencia,
-        uint256 timestamp,
-        uint256 indiceEvento
+        uint256 timestamp
     );
 
-    // ========= Modificadores =========
-    modifier soloConcesionaria() {
-        require(concesionariasOficiales[msg.sender], "No autorizado");
+    modifier soloAdmin() {
+        require(msg.sender == admin, "Solo el administrador");
         _;
     }
 
-    constructor() Ownable(msg.sender) {}
-
-    // ========= Administracion =========
-    function autorizarConcesionaria(address dealer) external onlyOwner {
-        require(dealer != address(0), "Direccion invalida");
-        concesionariasOficiales[dealer] = true;
-        emit ConcesionariaAutorizada(dealer, block.timestamp);
+    modifier soloConcesionaria() {
+        require(concesionariasOficiales[msg.sender], "No autorizado. Solo red oficial.");
+        _;
     }
 
-    function revocarConcesionaria(address dealer) external onlyOwner {
-        concesionariasOficiales[dealer] = false;
-        emit ConcesionariaRevocada(dealer, block.timestamp);
+    constructor() {
+        admin = msg.sender;
     }
 
-    function pausar() external onlyOwner {
-        _pause();
+    function transferirAdmin(address nuevo) external soloAdmin {
+        require(nuevo != address(0), "Address invalida");
+        admin = nuevo;
     }
 
-    function reanudar() external onlyOwner {
-        _unpause();
+    function autorizarConcesionaria(address wallet, string memory nombre) external soloAdmin {
+        require(wallet != address(0), "Address invalida");
+        concesionariasOficiales[wallet] = true;
+        nombreConcesionaria[wallet] = nombre;
+        emit ConcesionariaAutorizada(wallet, nombre);
     }
 
-    // ========= Operacion =========
+    function revocarConcesionaria(address wallet) external soloAdmin {
+        concesionariasOficiales[wallet] = false;
+        emit ConcesionariaRevocada(wallet);
+    }
+
+    function registrarVehiculo(
+        string memory vin,
+        uint256 kilometrajeInicial,
+        bytes32 hashEvidencia
+    ) external soloConcesionaria {
+        require(!vehiculos[vin].existe, "Vehiculo ya registrado");
+        require(bytes(vin).length >= 5, "VIN invalido");
+
+        vehiculos[vin] = Vehiculo({
+            existe: true,
+            kmInicial: kilometrajeInicial,
+            concesionariaAlta: msg.sender,
+            fechaAlta: block.timestamp
+        });
+
+        historial[vin].push(Evento({
+            kilometraje:   kilometrajeInicial,
+            tipoServicio:  0,
+            hashEvidencia: hashEvidencia,
+            concesionaria: msg.sender,
+            timestamp:     block.timestamp
+        }));
+
+        emit VehiculoRegistrado(vin, msg.sender, kilometrajeInicial);
+        emit ServicioRegistrado(vin, msg.sender, kilometrajeInicial, 0, hashEvidencia, block.timestamp);
+    }
+
     function registrarServicio(
         string memory vin,
         uint256 kilometraje,
         uint8 tipoServicio,
         bytes32 hashEvidencia
-    ) external whenNotPaused soloConcesionaria {
-        require(bytes(vin).length > 0, "VIN vacio");
-        require(hashEvidencia != bytes32(0), "Hash invalido");
-        Evento[] storage h = historial[vin];
-        if (h.length > 0) {
-            require(
-                kilometraje > h[h.length - 1].kilometraje,
-                "Kilometraje invalido"
-            );
+    ) external soloConcesionaria {
+        require(vehiculos[vin].existe, "Vehiculo no registrado");
+        require(tipoServicio > 0, "Tipo 0 reservado para alta");
+
+        Evento[] storage eventos = historial[vin];
+        if (eventos.length > 0) {
+            require(kilometraje >= eventos[eventos.length - 1].kilometraje, "Kilometraje regresivo");
         }
-        h.push(Evento({
-            kilometraje: kilometraje,
-            tipoServicio: tipoServicio,
+
+        eventos.push(Evento({
+            kilometraje:   kilometraje,
+            tipoServicio:  tipoServicio,
             hashEvidencia: hashEvidencia,
             concesionaria: msg.sender,
-            timestamp: block.timestamp
+            timestamp:     block.timestamp
         }));
-        operacionesPorConcesionaria[msg.sender] += 1;
-        ultimaOperacionConcesionaria[msg.sender] = block.timestamp;
-        emit ServicioRegistrado(
-            vin, kilometraje, tipoServicio, msg.sender,
-            hashEvidencia, block.timestamp, h.length - 1
-        );
+
+        emit ServicioRegistrado(vin, msg.sender, kilometraje, tipoServicio, hashEvidencia, block.timestamp);
     }
 
-    // ========= Consultas =========
-    function obtenerHistorial(string memory vin)
-        external view returns (Evento[] memory) {
+    function obtenerHistorial(string memory vin) external view returns (Evento[] memory) {
         return historial[vin];
     }
 
-    function cantidadEventos(string memory vin)
-        external view returns (uint256) {
+    function cantidadEventos(string memory vin) external view returns (uint256) {
         return historial[vin].length;
     }
 
-    function ultimoEvento(string memory vin)
-        external view returns (Evento memory) {
-        Evento[] storage h = historial[vin];
-        require(h.length > 0, "Sin eventos");
-        return h[h.length - 1];
-    }
-
-    function estaAutorizada(address dealer)
-        external view returns (bool) {
-        return concesionariasOficiales[dealer];
+    function eventoPorIndice(string memory vin, uint256 indice) external view returns (Evento memory) {
+        require(indice < historial[vin].length, "Indice fuera de rango");
+        return historial[vin][indice];
     }
 }
