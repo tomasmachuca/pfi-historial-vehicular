@@ -79,7 +79,8 @@ async def registrar_service(
         diferencia = km_max_onchain - kilometraje
         # Miles con punto (formato AR): formateamos cada número por separado para
         # no tocar las comas de la oración.
-        f = lambda n: f"{n:,}".replace(",", ".")
+def f(n):
+            return f"{n:,}".replace(",", ".")
         return {
             "id": str(s.id),
             "km_regresivo": True,
