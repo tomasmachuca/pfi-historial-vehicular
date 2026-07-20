@@ -1,0 +1,141 @@
+@import url("https://rsms.me/inter/inter.css");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #102440;
+}
+
+@supports (font-variation-settings: normal) {
+  body { font-family: "Inter var", "Inter", system-ui, sans-serif; }
+}
+
+/* En @layer components para que los utilities (p. ej. pl-9 en el buscador)
+   puedan sobrescribirlas: sin capa, estas clases le ganan a los utilities. */
+@layer components {
+.card {
+  @apply bg-white border border-slate-200/80 rounded-xl shadow-card;
+}
+
+.card-hover {
+  @apply transition duration-200 hover:shadow-lift hover:-translate-y-0.5 hover:border-slate-300;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 focus-visible:ring-offset-2;
+}
+
+/* Variante para el hero oscuro */
+.btn-ghost-light {
+  @apply inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white px-4 py-2 rounded-lg font-medium backdrop-blur-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50;
+}
+
+.input {
+  @apply w-full px-3 py-2 bg-white border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition;
+}
+
+.label {
+  @apply text-sm font-medium text-slate-700 mb-1 block;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full;
+}
+}
+
+/* ---------------------------------------------------------------
+   Hero: asfalto de noche con estelas de larga exposicion.
+   Una foto de larga exposicion de un auto ES una traza: el fondo
+   dice el nombre de la marca sin escribirlo.
+   --------------------------------------------------------------- */
+.hero-bg {
+  background-color: #08090b;
+}
+
+.hero-asfalto {
+  background-image:
+    radial-gradient(60rem 22rem at 50% 118%, rgb(40 46 58 / 0.85), transparent 70%),
+    radial-gradient(40rem 16rem at 15% -10%, rgb(24 30 42 / 0.9), transparent 70%);
+}
+
+.estela {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+/* Faros: blanco calido, van hacia la derecha */
+.estela-faro-1 {
+  top: 26%; left: -12%; width: 62%; height: 3px;
+  background: linear-gradient(90deg, transparent, #fff2d0, #ffd98a, transparent);
+  filter: blur(9px);
+  transform: rotate(-1.6deg);
+  opacity: 0.85;
+}
+.estela-faro-2 {
+  top: 35%; left: 8%; width: 84%; height: 2px;
+  background: linear-gradient(90deg, transparent, #ffffff, transparent);
+  filter: blur(5px);
+  opacity: 0.5;
+}
+
+/* Luces traseras: rojo, van hacia la izquierda */
+.estela-freno-1 {
+  top: 64%; right: -10%; width: 70%; height: 4px;
+  background: linear-gradient(90deg, transparent, #ff4d3d, #ff7a5c, transparent);
+  filter: blur(10px);
+  transform: rotate(1.2deg);
+  opacity: 0.8;
+}
+.estela-freno-2 {
+  top: 73%; right: 4%; width: 50%; height: 2px;
+  background: linear-gradient(90deg, transparent, #ff2d1f, transparent);
+  filter: blur(6px);
+  opacity: 0.55;
+}
+
+.estela-fria {
+  top: 47%; left: -6%; width: 40%; height: 1.5px;
+  background: linear-gradient(90deg, transparent, #9cc6e8, transparent);
+  filter: blur(4px);
+  opacity: 0.45;
+}
+
+/* Vineta: apaga los bordes para que el titulo respire */
+.hero-vineta {
+  background: radial-gradient(ellipse 70% 62% at 50% 48%, transparent 30%, rgb(8 9 11 / 0.78) 100%);
+}
+
+/* Placeholder de carga */
+.skeleton {
+  @apply relative overflow-hidden bg-slate-100 rounded;
+}
+.skeleton::after {
+  content: "";
+  @apply absolute inset-0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.6), transparent);
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
