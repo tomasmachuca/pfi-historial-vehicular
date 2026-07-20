@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
@@ -27,9 +28,10 @@ async def registrar_service(
     if tipo_servicio == 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tipo 0 reservado para alta")
 
+    ident = vin.strip().upper()
     v = (
         db.query(Vehiculo)
-        .filter((Vehiculo.vin == vin) | (Vehiculo.patente == vin))
+        .filter((func.upper(Vehiculo.vin) == ident) | (func.upper(Vehiculo.patente) == ident))
         .first()
     )
     if not v:
@@ -40,6 +42,63 @@ async def registrar_service(
     key = f"vehiculos/{v.vin}/service-{int(datetime.now(timezone.utc).timestamp())}-{archivo.filename}"
     url = upload_evidencia(contenido, key, archivo.content_type or "application/octet-stream")
 
+    # Km máximo ya sellado on-chain (alta + services legítimos). Las anomalías previas
+    # no cuentan como línea de base: se comparan siempre contra el historial honesto.
+    km_max_onchain = (
+        db.query(func.max(Servicio.kilometraje))
+        .filter(Servicio.vehiculo_id == v.id, Servicio.km_regresivo.is_(False))
+        .scalar()
+    ) or 0
+
+    # --- Caso anómalo: km regresivo -------------------------------------------
+    # El contrato rechaza en cadena un km menor al último (revierte). En vez de
+    # descartarlo, lo guardamos off-chain como "mancha" y marcamos vehículo y
+    # concesionaria, para que alimente el scoring del historial.
+    if kilometraje < km_max_onchain:
+        s = Servicio(
+            vehiculo_id=v.id,
+            concesionaria_id=current.id,
+            tipo_servicio=tipo_servicio,
+            kilometraje=kilometraje,
+            descripcion=descripcion,
+            archivo_url=url,
+            archivo_nombre=archivo.filename,
+            hash_evidencia=hash_hex,
+            tx_hash=None,
+            block_number=None,
+            chain_timestamp=None,
+            km_regresivo=True,
+            km_anterior=km_max_onchain,
+        )
+        db.add(s)
+        v.anomalias_count = (v.anomalias_count or 0) + 1
+        current.anomalias_count = (current.anomalias_count or 0) + 1
+        db.commit()
+        db.refresh(s)
+
+        diferencia = km_max_onchain - kilometraje
+        # Miles con punto (formato AR): formateamos cada número por separado para
+        # no tocar las comas de la oración.
+        f = lambda n: f"{n:,}".replace(",", ".")
+        return {
+            "id": str(s.id),
+            "km_regresivo": True,
+            "km_anterior": km_max_onchain,
+            "km_cargado": kilometraje,
+            "diferencia": diferencia,
+            "hash_evidencia": s.hash_evidencia,
+            "archivo_url": s.archivo_url,
+            "tx_hash": None,
+            "block_number": None,
+            "advertencia": (
+                f"Kilometraje regresivo: se cargó {f(kilometraje)} km, "
+                f"{f(diferencia)} km por debajo del último kilometraje registrado ({f(km_max_onchain)} km). "
+                "El service NO se selló en blockchain y quedó marcado como anomalía. "
+                "El vehículo y la concesionaria fueron señalados en su historial."
+            ),
+        }
+
+    # --- Caso normal: se sella en cadena --------------------------------------
     bc = get_blockchain()
     pk = decrypt_pk(current.wallet_pk_enc)
     try:
@@ -69,6 +128,7 @@ async def registrar_service(
         tx_hash=res["tx_hash"],
         block_number=res["block_number"],
         chain_timestamp=res["timestamp"],
+        km_regresivo=False,
     )
     db.add(s)
     db.commit()
@@ -76,6 +136,7 @@ async def registrar_service(
 
     return {
         "id": str(s.id),
+        "km_regresivo": False,
         "tx_hash": s.tx_hash,
         "block_number": s.block_number,
         "hash_evidencia": s.hash_evidencia,

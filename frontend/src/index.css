@@ -17,6 +17,9 @@ body {
   body { font-family: "Inter var", "Inter", system-ui, sans-serif; }
 }
 
+/* En @layer components para que los utilities (p. ej. pl-9 en el buscador)
+   puedan sobrescribirlas: sin capa, estas clases le ganan a los utilities. */
+@layer components {
 .card {
   @apply bg-white border border-slate-200/80 rounded-xl shadow-card;
 }
@@ -48,6 +51,7 @@ body {
 
 .badge {
   @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full;
+}
 }
 
 /* ---------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, ShieldCheck, ExternalLink } from "lucide-react";
+import { Search, ShieldCheck, ExternalLink, AlertTriangle } from "lucide-react";
 import { api } from "../lib/api";
 import { fmtNumber, fmtDate, shorten, txUrl } from "../lib/format";
 import KilometrajeChart from "../components/KilometrajeChart";
@@ -18,7 +18,7 @@ export default function ConsultaPublica() {
     setLoading(true);
     setData(null);
     try {
-      const r = await api.consultaPublica(identificador.trim());
+      const r = await api.consultaPublica(identificador.trim().toUpperCase());
       setData(r);
     } catch (err) {
       setError(err.message);
@@ -84,16 +84,51 @@ export default function ConsultaPublica() {
 
 function Resultado({ data }) {
   const { vehiculo, eventos, cadena } = data;
-  const ultimo = eventos[eventos.length - 1];
+  const anomalias = eventos.filter((e) => e.km_regresivo);
+  const tieneAnomalias = anomalias.length > 0 || (vehiculo.anomalias_count ?? 0) > 0;
+  const hayVerificados = eventos.some((e) => e.verificado);
+  // El "último km" honesto es el mayor entre los eventos legítimos (no regresivos).
+  const kmLegitimos = eventos.filter((e) => !e.km_regresivo).map((e) => e.kilometraje);
+  const ultimoKm = kmLegitimos.length ? Math.max(...kmLegitimos) : 0;
+  const ultimo = [...eventos].reverse().find((e) => !e.km_regresivo) || eventos[eventos.length - 1];
 
   return (
     <div className="mt-10 space-y-6 animate-fade-up">
+      {tieneAnomalias && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 flex items-start gap-3">
+          <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={22} />
+          <div className="text-sm text-amber-800">
+            <p className="font-semibold">
+              Historial con {anomalias.length === 1 ? "1 anomalía" : `${anomalias.length} anomalías`} de kilometraje
+            </p>
+            <p className="mt-1">
+              Se intentó registrar {anomalias.length === 1 ? "un service" : "services"} con kilometraje menor al ya sellado en
+              blockchain. Esos registros no pudieron sellarse en cadena y quedaron marcados como sospechosos. Revisá la
+              línea de tiempo antes de confiar en este vehículo.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <span className="badge bg-emerald-50 text-emerald-700">
-              <ShieldCheck size={14} /> Verificado on-chain
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {hayVerificados ? (
+                <span className="badge bg-emerald-50 text-emerald-700">
+                  <ShieldCheck size={14} /> Verificado on-chain
+                </span>
+              ) : (
+                <span className="badge bg-slate-100 text-slate-600">
+                  <ShieldCheck size={14} /> Sin registro en el contrato actual
+                </span>
+              )}
+              {tieneAnomalias && (
+                <span className="badge bg-amber-500 text-white gap-1">
+                  <AlertTriangle size={12} /> {anomalias.length} anomalía{anomalias.length === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
             <h2 className="text-2xl font-semibold mt-2">
               {vehiculo.marca} {vehiculo.modelo} <span className="text-slate-500 font-normal">({vehiculo.anio})</span>
             </h2>
@@ -105,8 +140,8 @@ function Resultado({ data }) {
             </div>
           </div>
           <div className="text-right text-sm">
-            <div className="text-slate-500 text-xs">Kilometraje al ultimo registro</div>
-            <div className="text-3xl font-semibold">{fmtNumber(ultimo?.kilometraje ?? 0)} <span className="text-base text-slate-500">km</span></div>
+            <div className="text-slate-500 text-xs">Último kilometraje registrado</div>
+            <div className="text-3xl font-semibold">{fmtNumber(ultimoKm)} <span className="text-base text-slate-500">km</span></div>
             <div className="text-xs text-slate-500 mt-1">{fmtDate(ultimo?.chain_timestamp)}</div>
           </div>
         </div>

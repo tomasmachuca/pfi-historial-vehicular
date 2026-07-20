@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wrench, CheckCircle2 } from "lucide-react";
+import { Wrench, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
 import { txUrl, shorten } from "../lib/format";
@@ -57,23 +57,46 @@ export default function RegistrarServicio() {
   };
 
   if (resultado) {
+    const esAnomalia = resultado.km_regresivo;
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
         <div className="card p-8 text-center">
-          <CheckCircle2 className="mx-auto text-emerald-500 mb-3" size={42} />
-          <h2 className="text-xl font-semibold">Service registrado en cadena</h2>
-          <p className="text-sm text-slate-600 mt-2">
-            Bloque #{resultado.block_number}
-          </p>
-          {resultado.tx_hash && (
-            <a
-              href={txUrl(resultado.tx_hash)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block mt-4 text-brand-500 hover:text-brand-600 text-sm font-mono"
-            >
-              tx: {shorten(resultado.tx_hash, 10, 8)}
-            </a>
+          {esAnomalia ? (
+            <>
+              <AlertTriangle className="mx-auto text-amber-500 mb-3" size={42} />
+              <h2 className="text-xl font-semibold text-amber-700">
+                Anomalía registrada: kilometraje regresivo
+              </h2>
+              <p className="text-sm text-slate-600 mt-3 max-w-md mx-auto">
+                {resultado.advertencia}
+              </p>
+              <div className="mt-4 inline-flex flex-col gap-1 text-sm bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-amber-800">
+                <span>Km cargado: <strong>{resultado.km_cargado?.toLocaleString("es-AR")}</strong></span>
+                <span>Último on-chain: <strong>{resultado.km_anterior?.toLocaleString("es-AR")}</strong></span>
+                <span>Diferencia: <strong>-{resultado.diferencia?.toLocaleString("es-AR")} km</strong></span>
+              </div>
+              <p className="text-xs text-slate-400 mt-4">
+                No se selló en blockchain. Quedó marcado en el historial del vehículo y de la concesionaria.
+              </p>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="mx-auto text-emerald-500 mb-3" size={42} />
+              <h2 className="text-xl font-semibold">Service registrado en cadena</h2>
+              <p className="text-sm text-slate-600 mt-2">
+                Bloque #{resultado.block_number}
+              </p>
+              {resultado.tx_hash && (
+                <a
+                  href={txUrl(resultado.tx_hash)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block mt-4 text-brand-500 hover:text-brand-600 text-sm font-mono"
+                >
+                  tx: {shorten(resultado.tx_hash, 10, 8)}
+                </a>
+              )}
+            </>
           )}
           <div className="mt-6 flex justify-center gap-2">
             <button onClick={() => { setResultado(null); setArchivo(null); }} className="btn-secondary">

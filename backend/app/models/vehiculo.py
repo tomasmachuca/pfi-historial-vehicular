@@ -20,6 +20,8 @@ class Vehiculo(Base):
     concesionaria_alta_id = Column(UUID(as_uuid=True), ForeignKey("concesionarias.id"), nullable=False)
     km_inicial = Column(Integer, nullable=False, default=0)
     tx_hash_alta = Column(String)
+    # Cantidad de services anómalos (km regresivo) registrados sobre este vehículo.
+    anomalias_count = Column(Integer, nullable=False, default=0)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
     concesionaria_alta = relationship("Concesionaria")

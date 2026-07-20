@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
@@ -30,13 +31,15 @@ async def alta_vehiculo(
     db: Session = Depends(get_db),
     current: Concesionaria = Depends(get_current_concesionaria),
 ):
-    patente = patente.strip()
+    # Normalizamos a mayúsculas: VIN y patente son identificadores case-insensitive.
+    vin = vin.strip().upper()
+    patente = patente.strip().upper()
     if not patente:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La patente es obligatoria")
 
-    if db.query(Vehiculo).filter(Vehiculo.vin == vin).first():
+    if db.query(Vehiculo).filter(func.upper(Vehiculo.vin) == vin).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "VIN ya registrado")
-    if db.query(Vehiculo).filter(Vehiculo.patente == patente).first():
+    if db.query(Vehiculo).filter(func.upper(Vehiculo.patente) == patente).first():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Patente ya registrada")
 
     bc = get_blockchain()
@@ -109,6 +112,7 @@ async def alta_vehiculo(
         color=v.color,
         km_inicial=v.km_inicial,
         tx_hash_alta=v.tx_hash_alta,
+        anomalias_count=v.anomalias_count or 0,
         creado_en=v.creado_en,
     )
 
@@ -135,6 +139,7 @@ def listar_mios(
             color=v.color,
             km_inicial=v.km_inicial,
             tx_hash_alta=v.tx_hash_alta,
+            anomalias_count=v.anomalias_count or 0,
             creado_en=v.creado_en,
         )
         for v in items

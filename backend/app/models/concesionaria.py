@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy import Column, String, Boolean, Integer, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
@@ -17,4 +17,6 @@ class Concesionaria(Base):
     wallet_address = Column(String, unique=True, nullable=False)
     wallet_pk_enc = Column(String, nullable=False)
     activa = Column(Boolean, nullable=False, default=True)
+    # Cantidad de services anómalos (km regresivo) cargados por esta concesionaria.
+    anomalias_count = Column(Integer, nullable=False, default=0)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())

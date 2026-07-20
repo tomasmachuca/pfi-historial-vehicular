@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, ForeignKey, SmallInteger, Text
+from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, ForeignKey, SmallInteger, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -30,6 +30,10 @@ class Servicio(Base):
     tx_hash = Column(String)
     block_number = Column(BigInteger)
     chain_timestamp = Column(DateTime(timezone=True))
+    # Anomalía: service cargado con km menor al último registrado on-chain.
+    # No se sella en cadena (el contrato lo rechaza); queda como "mancha" off-chain.
+    km_regresivo = Column(Boolean, nullable=False, default=False)
+    km_anterior = Column(Integer)  # km del último evento on-chain al momento de la carga
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
 
     vehiculo = relationship("Vehiculo", back_populates="servicios")

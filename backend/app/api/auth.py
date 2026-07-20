@@ -35,4 +35,5 @@ def me(current: Concesionaria = Depends(get_current_concesionaria)):
         email=current.email,
         wallet_address=current.wallet_address,
         activa=current.activa,
+        anomalias_count=current.anomalias_count or 0,
     )

@@ -9,14 +9,18 @@ import {
 } from "recharts";
 
 export default function KilometrajeChart({ eventos }) {
-  const data = eventos.map((e) => ({
-    fecha: new Date(e.chain_timestamp).toLocaleDateString("es-AR", {
-      year: "2-digit",
-      month: "short",
-    }),
-    km: e.kilometraje,
-    tipo: e.tipo_nombre,
-  }));
+  // Solo eventos sellados on-chain: los anómalos (km regresivo) no tienen fecha
+  // en cadena y distorsionarían la evolución del odómetro.
+  const data = eventos
+    .filter((e) => !e.km_regresivo && e.chain_timestamp)
+    .map((e) => ({
+      fecha: new Date(e.chain_timestamp).toLocaleDateString("es-AR", {
+        year: "2-digit",
+        month: "short",
+      }),
+      km: e.kilometraje,
+      tipo: e.tipo_nombre,
+    }));
 
   if (data.length === 0) return null;
 

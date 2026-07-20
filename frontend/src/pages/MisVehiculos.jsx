@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Car, ExternalLink } from "lucide-react";
+import { Car, ExternalLink, AlertTriangle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
 import { fmtDate, txUrl } from "../lib/format";
@@ -63,8 +63,17 @@ export default function MisVehiculos() {
             </thead>
             <tbody>
               {filtrados.map((v) => (
-                <tr key={v.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-5 py-3 font-mono text-xs">{v.vin}</td>
+                <tr key={v.id} className={`border-t border-slate-100 hover:bg-slate-50 ${v.anomalias_count > 0 ? "bg-amber-50/50" : ""}`}>
+                  <td className="px-5 py-3 font-mono text-xs">
+                    <span className="inline-flex items-center gap-1.5">
+                      {v.vin}
+                      {v.anomalias_count > 0 && (
+                        <span className="badge bg-amber-500 text-white gap-1" title={`${v.anomalias_count} service(s) con kilometraje regresivo`}>
+                          <AlertTriangle size={11} /> {v.anomalias_count}
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-5 py-3">{v.marca} {v.modelo}</td>
                   <td className="px-5 py-3">{v.anio}</td>
                   <td className="px-5 py-3">{v.patente || <span className="text-slate-400">—</span>}</td>

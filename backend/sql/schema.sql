@@ -14,6 +14,7 @@ create table if not exists concesionarias (
     wallet_address  text unique not null,
     wallet_pk_enc   text not null,
     activa          boolean not null default true,
+    anomalias_count int not null default 0,
     creado_en       timestamptz not null default now()
 );
 
@@ -28,6 +29,7 @@ create table if not exists vehiculos (
     concesionaria_alta_id    uuid not null references concesionarias(id),
     km_inicial               int  not null default 0,
     tx_hash_alta             text,
+    anomalias_count          int  not null default 0,
     creado_en                timestamptz not null default now()
 );
 
@@ -66,6 +68,8 @@ create table if not exists servicios (
     tx_hash             text,
     block_number        bigint,
     chain_timestamp     timestamptz,
+    km_regresivo        boolean not null default false,
+    km_anterior         int,
     creado_en           timestamptz not null default now()
 );
 

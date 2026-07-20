@@ -22,6 +22,7 @@ class VehiculoPublic(BaseModel):
     color: str | None
     km_inicial: int
     tx_hash_alta: str | None
+    anomalias_count: int = 0
     creado_en: datetime
 
     class Config:

@@ -27,6 +27,7 @@ class ConcesionariaPublic(BaseModel):
     email: EmailStr
     wallet_address: str
     activa: bool
+    anomalias_count: int = 0
 
     class Config:
         from_attributes = True

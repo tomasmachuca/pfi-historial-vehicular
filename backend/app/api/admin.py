@@ -81,6 +81,7 @@ def listar(db: Session = Depends(get_db)):
             email=c.email,
             wallet_address=c.wallet_address,
             activa=c.activa,
+            anomalias_count=c.anomalias_count or 0,
         )
         for c in items
     ]
