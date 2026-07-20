@@ -77,10 +77,12 @@ async def registrar_service(
         db.refresh(s)
 
         diferencia = km_max_onchain - kilometraje
+
         # Miles con punto (formato AR): formateamos cada número por separado para
         # no tocar las comas de la oración.
-def f(n):
+        def f(n):
             return f"{n:,}".replace(",", ".")
+
         return {
             "id": str(s.id),
             "km_regresivo": True,
