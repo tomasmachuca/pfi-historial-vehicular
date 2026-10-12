@@ -1,5 +1,16 @@
 import uuid
-from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, ForeignKey, SmallInteger, Text
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func

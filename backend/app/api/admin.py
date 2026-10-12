@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -12,6 +13,7 @@ from app.services.cuentas import revocar_en_contrato
 from app.services.security import encrypt_pk, hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 def _expected_admin_token() -> str:
@@ -51,7 +53,8 @@ def crear_concesionaria(payload: ConcesionariaCreate, db: Session = Depends(get_
     try:
         bc.fondear_wallet(address, "0.5")
     except Exception:
-        pass
+        # El fondeo es de cortesía: si falla, el alta sigue y la wallet se fondea después.
+        logger.warning("No se pudo fondear la wallet %s", address, exc_info=True)
 
     c = Concesionaria(
         nombre=payload.nombre,
