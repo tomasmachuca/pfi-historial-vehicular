@@ -1,17 +1,26 @@
 /**
- * Calcula un puntaje de confiabilidad (0-100) a partir de la cantidad de
- * servicios registrados y la antiguedad del vehiculo en anios.
- * Esqueleto inicial de la logica de scoring del sistema.
+ * Utilidades de presentación del historial.
  *
- * @param {number} cantidadServicios - Servicios de mantenimiento registrados.
- * @param {number} antiguedadAnios - Antiguedad del vehiculo en anios.
- * @returns {number} Puntaje entre 0 y 100.
+ * El puntaje de confiabilidad se calcula en el backend (app/services/scoring.py)
+ * para que sea el mismo en cualquier cliente; aquí solo se decide cómo mostrarlo.
  */
-export function calcularScore(cantidadServicios, antiguedadAnios) {
-  if (antiguedadAnios <= 0) {
-    return 100;
-  }
-  const serviciosEsperados = antiguedadAnios;
-  const ratio = cantidadServicios / serviciosEsperados;
-  return Math.round(Math.min(1, ratio) * 100);
+
+const NIVELES = {
+  alto: { etiqueta: "Confiabilidad alta", color: "text-emerald-700", fondo: "bg-emerald-50", barra: "bg-emerald-500", anillo: "#10b981" },
+  medio: { etiqueta: "Confiabilidad media", color: "text-brand-700", fondo: "bg-brand-50", barra: "bg-brand-500", anillo: "#2f66ad" },
+  bajo: { etiqueta: "Confiabilidad baja", color: "text-amber-800", fondo: "bg-amber-50", barra: "bg-amber-500", anillo: "#f59e0b" },
+};
+
+/**
+ * Estilos y etiqueta de un nivel de confiabilidad ("alto", "medio" o "bajo").
+ * Un nivel desconocido se muestra como bajo: ante la duda, no transmitir confianza.
+ */
+export function estiloNivel(nivel) {
+  return NIVELES[nivel] ?? NIVELES.bajo;
+}
+
+/** Indica si un hash corresponde a un evento sellado sin comprobante adjunto. */
+export function esHashCero(hash) {
+  if (!hash) return true;
+  return /^(0x)?0+$/.test(hash);
 }

@@ -65,6 +65,15 @@ export const api = {
     return handle(res);
   },
 
+  async bajaCuenta(token, password) {
+    const res = await fetch(`${API_URL}/auth/cuenta`, {
+      method: "DELETE",
+      headers: buildHeaders({ "Content-Type": "application/json" }, token),
+      body: JSON.stringify({ password }),
+    });
+    return handle(res);
+  },
+
   async consultaPublica(identificador) {
     const res = await fetch(`${API_URL}/publico/vehiculo/${encodeURIComponent(identificador)}`);
     return handle(res);

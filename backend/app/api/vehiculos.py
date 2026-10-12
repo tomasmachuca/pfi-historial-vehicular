@@ -1,21 +1,21 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 
 from app.database import get_db
 from app.dependencies import get_current_concesionaria
-from app.models import Concesionaria, Vehiculo, Servicio
+from app.models import Concesionaria, Servicio, Vehiculo
 from app.schemas.vehiculo import VehiculoPublic
 from app.services.blockchain import get_blockchain
-from app.services.hashing import sha256_bytes
+from app.services.hashing import ZERO_HASH_HEX, sha256_bytes
 from app.services.security import decrypt_pk
 from app.services.storage import upload_evidencia
 
 router = APIRouter(prefix="/vehiculos", tags=["vehiculos"])
 
 
-ZERO_HASH_HEX = "0" * 64
 
 
 @router.post("", response_model=VehiculoPublic, status_code=status.HTTP_201_CREATED)

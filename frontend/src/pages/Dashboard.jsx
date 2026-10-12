@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Car, Wrench, ArrowRight, Activity, AlertTriangle } from "lucide-react";
 import StatCard from "../components/StatCard";
+import BajaCuenta from "../components/BajaCuenta";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
 import { fmtNumber, shorten, fmtDate } from "../lib/format";
@@ -108,6 +109,8 @@ export default function Dashboard() {
           </table>
         )}
       </div>
+
+      <BajaCuenta />
     </div>
   );
 }

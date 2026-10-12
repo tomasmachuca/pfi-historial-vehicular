@@ -1,8 +1,11 @@
-import { ExternalLink, FileCheck2, AlertTriangle } from "lucide-react";
+import { ExternalLink, FileCheck2, FileX2, AlertTriangle } from "lucide-react";
 import { txUrl, shorten, fmtNumber, fmtDate } from "../lib/format";
+import { esHashCero } from "../utils";
 
 export default function EventoCard({ evento, esAlta }) {
   const anomalo = evento.km_regresivo;
+  // Hay comprobante si se selló su hash; la URL puede faltar si el almacén no está configurado.
+  const sinComprobante = esHashCero(evento.hash_evidencia);
   const fileteColor = anomalo ? "bg-amber-500" : esAlta ? "bg-emerald-500" : "bg-brand-300";
 
   return (
@@ -46,10 +49,17 @@ export default function EventoCard({ evento, esAlta }) {
       </div>
 
       <div className="mt-4 pt-4 pl-2 border-t border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-500">
-        <span className="flex items-center gap-1.5" title="Hash SHA-256 de la evidencia">
-          <FileCheck2 size={14} />
-          <span className="font-mono">{shorten(evento.hash_evidencia, 10, 6)}</span>
-        </span>
+        {sinComprobante ? (
+          <span className="flex items-center gap-1.5" title="El evento se selló sin un documento adjunto">
+            <FileX2 size={14} />
+            Sin comprobante adjunto
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5" title="Hash SHA-256 de la evidencia">
+            <FileCheck2 size={14} />
+            <span className="font-mono">{shorten(evento.hash_evidencia, 10, 6)}</span>
+          </span>
+        )}
         {evento.tx_hash ? (
           <a
             href={txUrl(evento.tx_hash)}

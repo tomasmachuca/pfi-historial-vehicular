@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Concesionaria, Servicio, TipoServicio, Vehiculo
 from app.services.blockchain import get_blockchain
+from app.services.hashing import ZERO_HASH_HEX
+from app.services.scoring import EventoScore, calcular_score
 
 router = APIRouter(prefix="/publico", tags=["publico"])
 
@@ -52,8 +54,11 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
 
     # Armamos el timeline desde la DB (registro completo). La cadena solo confirma.
     eventos = []
+    insumos_score = []
     for s in servicios_db:
         c = conces_by_id.get(s.concesionaria_id)
+        # Hay comprobante si se selló su hash; la URL puede faltar si el almacén no está configurado.
+        con_evidencia = bool(s.hash_evidencia) and s.hash_evidencia != ZERO_HASH_HEX
         # Verificado = no es anomalía, tiene tx y hay un evento on-chain con ese km.
         verificado = False
         if not s.km_regresivo and s.tx_hash and on_chain_kms.get(s.kilometraje, 0) > 0:
@@ -69,6 +74,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             "chain_timestamp": s.chain_timestamp.isoformat() if s.chain_timestamp else None,
             "descripcion": s.descripcion,
             "archivo_url": s.archivo_url,
+            "con_evidencia": con_evidencia,
             "tx_hash": s.tx_hash,
             "block_number": s.block_number,
             "km_regresivo": s.km_regresivo,
@@ -76,6 +82,15 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             "verificado": verificado,
             "_orden": s.creado_en,
         })
+        insumos_score.append(EventoScore(
+            kilometraje=s.kilometraje,
+            fecha=s.chain_timestamp or s.creado_en,
+            concesionaria=str(s.concesionaria_id) if s.concesionaria_id else None,
+            con_evidencia=con_evidencia,
+            verificado=verificado,
+            anomalia=bool(s.km_regresivo),
+            es_alta=s.tipo_servicio == 0,
+        ))
     anomalias = [s for s in servicios_db if s.km_regresivo]
 
     # Orden cronológico por fecha de carga; las anomalías se intercalan donde ocurrieron.
@@ -97,6 +112,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             "creado_en": v.creado_en.isoformat() if v.creado_en else None,
         },
         "eventos": eventos,
+        "score": calcular_score(insumos_score, datetime.now(timezone.utc)),
         "cadena": {
             "verificado": bool(info_chain),
             "tx_hash_alta": v.tx_hash_alta,

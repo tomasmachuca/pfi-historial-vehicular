@@ -1,0 +1,18 @@
+# Configuración de ruff para el backend (la usa el job de CI).
+
+[lint.flake8-bugbear]
+# Depends(), File(), Header() y Query() en los parámetros son el patrón de
+# inyección de dependencias de FastAPI, no un valor por defecto mutable.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Header",
+    "fastapi.Query",
+]
+
+[lint.per-file-ignores]
+# Las rutas y el adaptador de blockchain capturan cualquier error de la red o del
+# nodo RPC para responder 502 con un mensaje claro en lugar de un 500 genérico.
+"app/api/*.py" = ["BLE001"]
+"app/services/blockchain.py" = ["BLE001"]

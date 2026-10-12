@@ -14,6 +14,10 @@ class TokenResponse(BaseModel):
     wallet_address: str
 
 
+class BajaCuentaRequest(BaseModel):
+    password: str
+
+
 class ConcesionariaCreate(BaseModel):
     nombre: str
     cuit: str | None = None
@@ -24,7 +28,8 @@ class ConcesionariaCreate(BaseModel):
 class ConcesionariaPublic(BaseModel):
     id: str
     nombre: str
-    email: EmailStr
+    # str y no EmailStr: una cuenta dada de baja conserva un correo de reemplazo no entregable.
+    email: str
     wallet_address: str
     activa: bool
     anomalias_count: int = 0

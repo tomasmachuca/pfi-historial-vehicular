@@ -35,16 +35,13 @@ export default function RegistrarServicio() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!archivo) {
-      setError("Adjunta la orden de trabajo");
-      return;
-    }
     setError(null);
     setLoading(true);
 
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-    fd.append("archivo", archivo);
+    // El comprobante es opcional: sin archivo se sella el evento con hash cero.
+    if (archivo) fd.append("archivo", archivo);
 
     try {
       const res = await api.registrarServicio(session.token, fd);
@@ -86,6 +83,9 @@ export default function RegistrarServicio() {
               <p className="text-sm text-slate-600 mt-2">
                 Bloque #{resultado.block_number}
               </p>
+              {!resultado.con_evidencia && (
+                <p className="text-xs text-slate-500 mt-1">Registrado sin comprobante adjunto.</p>
+              )}
               {resultado.tx_hash && (
                 <a
                   href={txUrl(resultado.tx_hash)}
@@ -169,14 +169,21 @@ export default function RegistrarServicio() {
         </div>
 
         <div>
-          <label className="label">Orden de trabajo (PDF / imagen)</label>
+          <label className="label">Orden de trabajo o comprobante (opcional)</label>
           <input
             type="file"
             accept=".pdf,image/*"
             onChange={(e) => setArchivo(e.target.files?.[0] || null)}
             className="block w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:text-slate-700 hover:file:bg-slate-50"
-            required
           />
+          <p className="text-xs text-slate-500 mt-1.5">
+            Si no adjuntás un comprobante, el service se sella igual en blockchain. Los registros con
+            comprobante suman puntaje de confiabilidad en la consulta pública.
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            No incluyas datos personales del cliente (nombre, DNI, domicilio) en la descripción ni en el
+            comprobante: tapalos antes de subirlo, porque el historial es público.
+          </p>
         </div>
 
         {error && (

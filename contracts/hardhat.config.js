@@ -28,10 +28,10 @@ module.exports = {
       chainId: 137,
     },
   },
+  // API v2 unificada de Etherscan: una sola key de etherscan.io sirve para todas
+  // las redes (Amoy incluida). El formato de objeto por-red usa la API v1, dada
+  // de baja en 2025.
   etherscan: {
-    apiKey: {
-      polygonAmoy: process.env.POLYGONSCAN_API_KEY || "",
-      polygon: process.env.POLYGONSCAN_API_KEY || "",
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY || process.env.POLYGONSCAN_API_KEY || "",
   },
 };

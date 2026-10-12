@@ -1,3 +1,6 @@
+import logging
+import uuid
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -6,9 +9,11 @@ from app.database import get_db
 from app.models import Concesionaria
 from app.schemas.auth import ConcesionariaCreate, ConcesionariaPublic
 from app.services.blockchain import get_blockchain
-from app.services.security import hash_password, encrypt_pk
+from app.services.cuentas import revocar_en_contrato
+from app.services.security import encrypt_pk, hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 def _expected_admin_token() -> str:
@@ -48,7 +53,8 @@ def crear_concesionaria(payload: ConcesionariaCreate, db: Session = Depends(get_
     try:
         bc.fondear_wallet(address, "0.5")
     except Exception:
-        pass
+        # El fondeo es de cortesía: si falla, el alta sigue y la wallet se fondea después.
+        logger.warning("No se pudo fondear la wallet %s", address, exc_info=True)
 
     c = Concesionaria(
         nombre=payload.nombre,
@@ -88,7 +94,7 @@ def listar(db: Session = Depends(get_db)):
 
 
 @router.post("/concesionarias/{concesionaria_id}/fondear", dependencies=[Depends(_check_admin)])
-def fondear(concesionaria_id: str, monto_matic: str = "0.5", db: Session = Depends(get_db)):
+def fondear(concesionaria_id: uuid.UUID, monto_matic: str = "0.5", db: Session = Depends(get_db)):
     c = db.query(Concesionaria).filter(Concesionaria.id == concesionaria_id).first()
     if not c:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No encontrada")
@@ -98,7 +104,7 @@ def fondear(concesionaria_id: str, monto_matic: str = "0.5", db: Session = Depen
 
 
 @router.post("/concesionarias/{concesionaria_id}/autorizar", dependencies=[Depends(_check_admin)])
-def reautorizar(concesionaria_id: str, db: Session = Depends(get_db)):
+def reautorizar(concesionaria_id: uuid.UUID, db: Session = Depends(get_db)):
     """
     Re-autoriza la wallet de una concesionaria existente en el contrato.
     Útil cuando la autorización inicial falló silenciosamente y los registros
@@ -130,7 +136,7 @@ def reautorizar(concesionaria_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/concesionarias/{concesionaria_id}/estado", dependencies=[Depends(_check_admin)])
-def estado_concesionaria(concesionaria_id: str, db: Session = Depends(get_db)):
+def estado_concesionaria(concesionaria_id: uuid.UUID, db: Session = Depends(get_db)):
     c = db.query(Concesionaria).filter(Concesionaria.id == concesionaria_id).first()
     if not c:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No encontrada")
@@ -143,3 +149,18 @@ def estado_concesionaria(concesionaria_id: str, db: Session = Depends(get_db)):
         "balance_matic": bc.balance_matic(c.wallet_address),
         "admin_contrato": bc.admin_address(),
     }
+
+
+@router.post("/concesionarias/{concesionaria_id}/revocar", dependencies=[Depends(_check_admin)])
+def revocar(concesionaria_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Revocación administrativa: la billetera deja de poder escribir y la cuenta queda inactiva."""
+    c = db.query(Concesionaria).filter(Concesionaria.id == concesionaria_id).first()
+    if not c:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Concesionaria no encontrada")
+    try:
+        res = revocar_en_contrato(c, get_blockchain())
+    except Exception as e:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"No se pudo revocar en el contrato: {e}")
+    c.activa = False
+    db.commit()
+    return {"ok": True, "revocada_on_chain": res is not None, "tx_hash": res["tx_hash"] if res else None}

@@ -1,16 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { calcularScore } from "../utils.js";
+import { estiloNivel, esHashCero } from "../utils.js";
 
-describe("calcularScore", () => {
-  it("devuelve 100 para un vehiculo 0km", () => {
-    expect(calcularScore(0, 0)).toBe(100);
+describe("estiloNivel", () => {
+  it("usa verde para el nivel alto", () => {
+    expect(estiloNivel("alto").barra).toBe("bg-emerald-500");
   });
 
-  it("devuelve 100 cuando cumple los servicios esperados", () => {
-    expect(calcularScore(5, 5)).toBe(100);
+  it("usa ámbar para el nivel bajo", () => {
+    expect(estiloNivel("bajo").barra).toBe("bg-amber-500");
   });
 
-  it("penaliza proporcionalmente cuando faltan servicios", () => {
-    expect(calcularScore(1, 4)).toBe(25);
+  it("trata un nivel desconocido como bajo", () => {
+    expect(estiloNivel("otro")).toEqual(estiloNivel("bajo"));
+  });
+});
+
+describe("esHashCero", () => {
+  it("reconoce el hash cero con y sin prefijo", () => {
+    expect(esHashCero("0".repeat(64))).toBe(true);
+    expect(esHashCero("0x" + "0".repeat(64))).toBe(true);
+  });
+
+  it("considera sin comprobante a un hash ausente", () => {
+    expect(esHashCero(null)).toBe(true);
+  });
+
+  it("no confunde un hash real con el hash cero", () => {
+    expect(esHashCero("ab" + "0".repeat(62))).toBe(false);
   });
 });

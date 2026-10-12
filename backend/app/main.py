@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import admin, auth, publico, servicios, vehiculos
 from app.config import settings
-from app.api import auth, vehiculos, servicios, publico, admin
 
 # Orígenes explícitos (sin barra final: el navegador no manda trailing slash en Origin)
 _cors_origins = [

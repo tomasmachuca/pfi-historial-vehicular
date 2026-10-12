@@ -15,6 +15,7 @@ node_modules/
 dist/
 build/
 coverage/
+coverage.json
 .eslintcache
 
 # ===== Hardhat (contracts) =====
@@ -33,6 +34,7 @@ Thumbs.db
 *.key
 .env.local
 .env.production
+/env
 
 # Herramientas locales
 .claude/

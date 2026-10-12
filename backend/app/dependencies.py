@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -21,6 +23,10 @@ def get_current_concesionaria(
     cid = payload.get("sub")
     if not cid:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token sin subject")
+    try:
+        cid = uuid.UUID(cid)
+    except ValueError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token con subject invalido")
 
     c = db.query(Concesionaria).filter(Concesionaria.id == cid).first()
     if not c or not c.activa:
