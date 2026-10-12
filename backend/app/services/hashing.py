@@ -1,5 +1,9 @@
 import hashlib
 
+# Se sella en cadena cuando el evento no tiene comprobante adjunto: deja
+# explícito, para cualquier lector del contrato, que no hay documento que verificar.
+ZERO_HASH_HEX = "0" * 64
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()

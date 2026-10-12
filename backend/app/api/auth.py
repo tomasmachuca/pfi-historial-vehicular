@@ -4,8 +4,15 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_concesionaria
 from app.models import Concesionaria
-from app.schemas.auth import LoginRequest, TokenResponse, ConcesionariaPublic
-from app.services.security import verify_password, create_access_token
+from app.schemas.auth import (
+    BajaCuentaRequest,
+    ConcesionariaPublic,
+    LoginRequest,
+    TokenResponse,
+)
+from app.services.blockchain import get_blockchain
+from app.services.cuentas import dar_de_baja
+from app.services.security import create_access_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -37,3 +44,24 @@ def me(current: Concesionaria = Depends(get_current_concesionaria)):
         activa=current.activa,
         anomalias_count=current.anomalias_count or 0,
     )
+
+
+@router.delete("/cuenta")
+def baja_cuenta(
+    req: BajaCuentaRequest,
+    current: Concesionaria = Depends(get_current_concesionaria),
+    db: Session = Depends(get_db),
+):
+    """Baja de la cuenta a pedido de la concesionaria (derecho de supresión, Ley 25.326)."""
+    if not verify_password(req.password, current.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Contraseña incorrecta")
+    try:
+        resultado = dar_de_baja(current, get_blockchain())
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"No se pudo revocar la autorización en el contrato: {e}. La cuenta sigue activa.",
+        )
+    db.commit()
+    return resultado

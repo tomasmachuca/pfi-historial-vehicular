@@ -112,6 +112,13 @@ class BlockchainService:
             nombre,
         )
 
+    def revocar_concesionaria(self, wallet_address: str) -> dict[str, Any]:
+        return self._send(
+            settings.ADMIN_PRIVATE_KEY,
+            "revocarConcesionaria",
+            Web3.to_checksum_address(wallet_address),
+        )
+
     def es_concesionaria_autorizada(self, wallet_address: str) -> bool:
         return bool(
             self.contract.functions.concesionariasOficiales(

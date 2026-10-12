@@ -8,7 +8,7 @@ from app.database import get_db
 from app.dependencies import get_current_concesionaria
 from app.models import Concesionaria, Vehiculo, Servicio
 from app.services.blockchain import get_blockchain
-from app.services.hashing import sha256_bytes
+from app.services.hashing import ZERO_HASH_HEX, sha256_bytes
 from app.services.security import decrypt_pk
 from app.services.storage import upload_evidencia
 
@@ -21,7 +21,7 @@ async def registrar_service(
     tipo_servicio: int = Form(...),
     kilometraje: int = Form(...),
     descripcion: str | None = Form(None),
-    archivo: UploadFile = File(...),
+    archivo: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     current: Concesionaria = Depends(get_current_concesionaria),
 ):
@@ -37,10 +37,19 @@ async def registrar_service(
     if not v:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vehiculo no registrado (VIN o patente no encontrados)")
 
-    contenido = await archivo.read()
-    hash_hex = sha256_bytes(contenido)
-    key = f"vehiculos/{v.vin}/service-{int(datetime.now(timezone.utc).timestamp())}-{archivo.filename}"
-    url = upload_evidencia(contenido, key, archivo.content_type or "application/octet-stream")
+    # El comprobante es opcional: sin él se sella igual el evento (km, tipo,
+    # concesionaria y fecha) con hash cero, y el scoring lo pondera como un
+    # registro sin evidencia documental.
+    hash_hex = ZERO_HASH_HEX
+    url: str | None = None
+    archivo_nombre: str | None = None
+    if archivo is not None and archivo.filename:
+        contenido = await archivo.read()
+        if contenido:
+            hash_hex = sha256_bytes(contenido)
+            key = f"vehiculos/{v.vin}/service-{int(datetime.now(timezone.utc).timestamp())}-{archivo.filename}"
+            url = upload_evidencia(contenido, key, archivo.content_type or "application/octet-stream")
+            archivo_nombre = archivo.filename
 
     # Km máximo ya sellado on-chain (alta + services legítimos). Las anomalías previas
     # no cuentan como línea de base: se comparan siempre contra el historial honesto.
@@ -62,7 +71,7 @@ async def registrar_service(
             kilometraje=kilometraje,
             descripcion=descripcion,
             archivo_url=url,
-            archivo_nombre=archivo.filename,
+            archivo_nombre=archivo_nombre,
             hash_evidencia=hash_hex,
             tx_hash=None,
             block_number=None,
@@ -91,6 +100,7 @@ async def registrar_service(
             "diferencia": diferencia,
             "hash_evidencia": s.hash_evidencia,
             "archivo_url": s.archivo_url,
+            "con_evidencia": url is not None,
             "tx_hash": None,
             "block_number": None,
             "advertencia": (
@@ -126,7 +136,7 @@ async def registrar_service(
         kilometraje=kilometraje,
         descripcion=descripcion,
         archivo_url=url,
-        archivo_nombre=archivo.filename,
+        archivo_nombre=archivo_nombre,
         hash_evidencia=hash_hex,
         tx_hash=res["tx_hash"],
         block_number=res["block_number"],
@@ -144,4 +154,5 @@ async def registrar_service(
         "block_number": s.block_number,
         "hash_evidencia": s.hash_evidencia,
         "archivo_url": s.archivo_url,
+        "con_evidencia": url is not None,
     }

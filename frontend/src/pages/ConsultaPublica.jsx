@@ -5,6 +5,7 @@ import { fmtNumber, fmtDate, shorten, txUrl } from "../lib/format";
 import KilometrajeChart from "../components/KilometrajeChart";
 import ServiciosChart from "../components/ServiciosChart";
 import EventoCard from "../components/EventoCard";
+import ScoreCard from "../components/ScoreCard";
 
 export default function ConsultaPublica() {
   const [identificador, setIdentificador] = useState("");
@@ -157,6 +158,8 @@ function Resultado({ data }) {
           )}
         </div>
       </div>
+
+      <ScoreCard score={data.score} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <KilometrajeChart eventos={eventos} />

@@ -8,14 +8,13 @@ from app.dependencies import get_current_concesionaria
 from app.models import Concesionaria, Vehiculo, Servicio
 from app.schemas.vehiculo import VehiculoPublic
 from app.services.blockchain import get_blockchain
-from app.services.hashing import sha256_bytes
+from app.services.hashing import ZERO_HASH_HEX, sha256_bytes
 from app.services.security import decrypt_pk
 from app.services.storage import upload_evidencia
 
 router = APIRouter(prefix="/vehiculos", tags=["vehiculos"])
 
 
-ZERO_HASH_HEX = "0" * 64
 
 
 @router.post("", response_model=VehiculoPublic, status_code=status.HTTP_201_CREATED)
