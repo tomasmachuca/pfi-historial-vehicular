@@ -13,7 +13,19 @@ export default function ConsultaPublica() {
   const [identificador, setIdentificador] = useState(params.get("q") || "");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lento, setLento] = useState(false);
   const [error, setError] = useState(null);
+
+  // Si la consulta tarda, casi siempre es el servidor arrancando: se avisa para
+  // que el usuario no la dé por fallida.
+  useEffect(() => {
+    if (!loading) {
+      setLento(false);
+      return undefined;
+    }
+    const t = setTimeout(() => setLento(true), 4000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const consultar = async (texto) => {
     const ident = texto.trim().toUpperCase();
@@ -80,6 +92,12 @@ export default function ConsultaPublica() {
 
       {loading && (
         <div className="max-w-5xl mx-auto mt-10 space-y-4" aria-busy="true">
+          {lento && (
+            <p className="text-center text-sm text-slate-500">
+              El servidor se está iniciando después de un rato sin uso. La primera consulta puede demorar hasta un
+              minuto; las siguientes responden en el acto.
+            </p>
+          )}
           <div className="skeleton h-40 rounded-xl" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="skeleton h-56 rounded-xl" />

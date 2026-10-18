@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { despertarServidor } from "./lib/despertar";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -11,6 +13,10 @@ import RegistrarServicio from "./pages/RegistrarServicio";
 import ConsultaPublica from "./pages/ConsultaPublica";
 
 export default function App() {
+  useEffect(() => {
+    despertarServidor();
+  }, []);
+
   return (
     <Layout>
       <Routes>

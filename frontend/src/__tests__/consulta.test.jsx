@@ -104,6 +104,21 @@ describe("consulta pública", () => {
     expect(screen.queryByText(/Historial con/)).toBeNull();
   });
 
+  it("avisa que el servidor está arrancando si la consulta tarda", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let responder;
+    api.consultaPublica.mockReturnValue(new Promise((ok) => { responder = ok; }));
+    renderApp("/consulta");
+    buscar("AB123CD");
+    expect(screen.queryByText(/El servidor se está iniciando/)).toBeNull();
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(screen.getByText(/El servidor se está iniciando/)).toBeTruthy();
+    responder(consulta({ anomalias: 0 }));
+    expect(await screen.findByText("Confiabilidad alta")).toBeTruthy();
+    expect(screen.queryByText(/El servidor se está iniciando/)).toBeNull();
+    vi.useRealTimers();
+  });
+
   it("informa que el vehículo no existe", async () => {
     api.consultaPublica.mockRejectedValue(new Error("Vehiculo no encontrado"));
     renderApp("/consulta");
