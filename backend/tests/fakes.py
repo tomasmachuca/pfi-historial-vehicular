@@ -4,7 +4,7 @@ FakeBlockchain reproduce las reglas del contrato HistorialCeroKM (autorización,
 alta única, sellado del kilometraje regresivo como anomalía, tipo 0 reservado) sin red: permite probar
 la API de punta a punta sin Polygon. Los mensajes de error son los del contrato.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from eth_account import Account
@@ -34,7 +34,7 @@ class FakeBlockchain:
         return {
             "tx_hash": f"0x{self.bloque:064x}",
             "block_number": self.bloque,
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
             "status": 1,
         }
 

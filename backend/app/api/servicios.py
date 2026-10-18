@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func
@@ -48,7 +48,7 @@ async def registrar_service(
         contenido = await archivo.read()
         if contenido:
             hash_hex = sha256_bytes(contenido)
-            key = f"vehiculos/{v.vin}/service-{int(datetime.now(timezone.utc).timestamp())}-{archivo.filename}"
+            key = f"vehiculos/{v.vin}/service-{int(datetime.now(UTC).timestamp())}-{archivo.filename}"
             url = upload_evidencia(contenido, key, archivo.content_type or "application/octet-stream")
             archivo_nombre = archivo.filename
 

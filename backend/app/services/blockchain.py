@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -150,7 +150,7 @@ class BlockchainService:
         return {
             "tx_hash": tx_hash.hex(),
             "block_number": receipt.blockNumber,
-            "timestamp": datetime.fromtimestamp(block.timestamp, tz=timezone.utc),
+            "timestamp": datetime.fromtimestamp(block.timestamp, tz=UTC),
             "status": receipt.status,
             "gas_used": getattr(receipt, "gasUsed", None),
         }, receipt

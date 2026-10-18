@@ -21,7 +21,7 @@ import os
 import statistics
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import requests
 from web3 import Web3
@@ -60,7 +60,7 @@ def main() -> int:
     login.raise_for_status()
     sesion.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
 
-    sufijo = datetime.now(timezone.utc).strftime("%m%d%H%M%S")
+    sufijo = datetime.now(UTC).strftime("%m%d%H%M%S")
     vin, patente = f"TZPRUEBA{sufijo}", f"TZ{sufijo[-5:]}"
     operaciones = []
 
@@ -113,7 +113,7 @@ def main() -> int:
         w.writeheader()
         w.writerows(filas)
 
-    print(f"\nMedición del {datetime.now(timezone.utc):%d/%m/%Y %H:%M} UTC contra {API} (vehículo {vin}, patente {patente})")
+    print(f"\nMedición del {datetime.now(UTC):%d/%m/%Y %H:%M} UTC contra {API} (vehículo {vin}, patente {patente})")
     print(f"Primer pedido (arranque del servidor): {arranque:.1f} s\n")
     print("| Operación | Km | Latencia (s) | Gas | Gas price (gwei) | Costo (POL) | Costo (USD) | Anomalía | Tx |")
     print("|---|---|---|---|---|---|---|---|---|")

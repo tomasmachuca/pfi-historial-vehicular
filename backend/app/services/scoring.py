@@ -18,7 +18,7 @@ calificar como confiable, y sin ningún evento confirmado en el contrato el
 puntaje no puede apoyarse en la verificabilidad que el sistema promete.
 """
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import pairwise
 
 PESO_ANOMALIAS = 30
@@ -205,7 +205,7 @@ def nivel(puntaje: int) -> str:
 def _utc(fecha: datetime | None) -> datetime | None:
     # La base devuelve fechas con zona; los datos de prueba pueden no tenerla.
     if fecha is not None and fecha.tzinfo is None:
-        return fecha.replace(tzinfo=timezone.utc)
+        return fecha.replace(tzinfo=UTC)
     return fecha
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
@@ -109,7 +109,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
     # de la base): se muestran igual, a partir de lo que el contrato conserva.
     for a in anomalias_pendientes:
         c = conces_by_wallet.get(str(a["concesionaria"]).lower())
-        fecha = datetime.fromtimestamp(a["timestamp"], tz=timezone.utc)
+        fecha = datetime.fromtimestamp(a["timestamp"], tz=UTC)
         eventos.append({
             "kilometraje": a["kilometrajeDeclarado"],
             "tipo_servicio": a["tipoServicio"],
@@ -138,11 +138,11 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
     anomalias_selladas = sum(1 for e in eventos if e["km_regresivo"] and e["verificado"])
 
     # Orden cronológico por fecha de carga; las anomalías se intercalan donde ocurrieron.
-    _min_dt = datetime.min.replace(tzinfo=timezone.utc)
+    _min_dt = datetime.min.replace(tzinfo=UTC)
 
     def _orden(e):
         f = e["_orden"] or _min_dt
-        return f if f.tzinfo else f.replace(tzinfo=timezone.utc)
+        return f if f.tzinfo else f.replace(tzinfo=UTC)
 
     eventos.sort(key=_orden)
     for e in eventos:
@@ -161,7 +161,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             "creado_en": v.creado_en.isoformat() if v.creado_en else None,
         },
         "eventos": eventos,
-        "score": calcular_score(insumos_score, datetime.now(timezone.utc)),
+        "score": calcular_score(insumos_score, datetime.now(UTC)),
         "cadena": {
             "verificado": bool(info_chain),
             "tx_hash_alta": v.tx_hash_alta,

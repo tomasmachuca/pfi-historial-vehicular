@@ -1,5 +1,5 @@
 """Pruebas del módulo de scoring de confiabilidad."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.services.hashing import ZERO_HASH_HEX, sha256_to_bytes32
 from app.services.scoring import (
@@ -15,7 +15,7 @@ from app.services.scoring import (
     nivel,
 )
 
-AHORA = datetime(2026, 10, 1, tzinfo=timezone.utc)
+AHORA = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def evento(meses_atras: float, km: int, *, conces="A", evidencia=True, verificado=True,

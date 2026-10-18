@@ -7,7 +7,7 @@ Uso:
 """
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from web3 import Web3
@@ -36,7 +36,7 @@ def main(vin: str) -> None:
         print("El VIN no existe on-chain.")
         return
 
-    fa = datetime.fromtimestamp(fecha_alta, tz=timezone.utc)
+    fa = datetime.fromtimestamp(fecha_alta, tz=UTC)
     print(f"km inicial (alta 0km): {km_inicial:,} km")
     print(f"concesionaria de alta: {alta}")
     print(f"fecha de alta:         {fa:%Y-%m-%d %H:%M UTC}\n")
@@ -45,7 +45,7 @@ def main(vin: str) -> None:
     print(f"Historial on-chain ({len(eventos)} eventos):")
     for i, e in enumerate(eventos):
         km, tipo, hash_ev, conces, ts = e
-        f = datetime.fromtimestamp(ts, tz=timezone.utc)
+        f = datetime.fromtimestamp(ts, tz=UTC)
         print(
             f"  #{i}  {km:>10,} km  {TIPOS.get(tipo, tipo):<12}  "
             f"{f:%Y-%m-%d %H:%M}  by {conces[:10]}...  "
