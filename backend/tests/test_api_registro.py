@@ -82,6 +82,21 @@ def test_service_con_comprobante_y_busqueda_por_patente(client, crear_concesiona
     assert r.json()["con_evidencia"] is True
 
 
+def test_sustituir_el_comprobante_despues_del_sellado_queda_detectado(client, bc, storage, crear_concesionaria, alta_vehiculo):
+    c = crear_concesionaria()
+    alta_vehiculo(c["headers"])
+    original = b"orden de trabajo 5678 - 10.000 km"
+    r = _service(client, c["headers"], 10000, archivo=("orden.pdf", original, "application/pdf"))
+    sellado = bc.historial[VIN][-1]["hashEvidencia"].removeprefix("0x")
+    assert sellado == hashlib.sha256(original).hexdigest() == r.json()["hash_evidencia"]
+
+    # Alguien reemplaza el archivo en el almacén de objetos por una versión adulterada.
+    clave = next(iter(storage.subidos))
+    storage.subidos[clave] = b"orden de trabajo 5678 - 1.000 km"
+    # Cualquier verificador que recalcule el hash del archivo servido detecta la diferencia.
+    assert hashlib.sha256(storage.subidos[clave]).hexdigest() != sellado
+
+
 def test_service_rechaza_tipo_cero_y_vehiculo_inexistente(client, crear_concesionaria, alta_vehiculo):
     c = crear_concesionaria()
     alta_vehiculo(c["headers"])
@@ -89,18 +104,29 @@ def test_service_rechaza_tipo_cero_y_vehiculo_inexistente(client, crear_concesio
     assert _service(client, c["headers"], 10000, vin="NOEXISTE").status_code == 404
 
 
-def test_kilometraje_regresivo_queda_como_anomalia_sin_sellar(client, bc, crear_concesionaria, alta_vehiculo):
+def test_kilometraje_regresivo_se_sella_en_cadena_como_anomalia(client, bc, crear_concesionaria, alta_vehiculo):
     c = crear_concesionaria()
     alta_vehiculo(c["headers"])
     _service(client, c["headers"], 30560)
     r = _service(client, c["headers"], 18400)
     assert r.status_code == 201
     cuerpo = r.json()
-    assert cuerpo["km_regresivo"] is True and cuerpo["tx_hash"] is None
-    assert cuerpo["diferencia"] == 30560 - 18400
-    assert "12.160" in cuerpo["advertencia"]
-    # El intento no llegó al contrato: el historial en cadena sigue teniendo alta y un service.
+    assert cuerpo["km_regresivo"] is True and cuerpo["tx_hash"] is not None
+    assert cuerpo["km_anterior"] == 30560 and cuerpo["diferencia"] == 30560 - 18400
+    assert "12.160" in cuerpo["advertencia"] and "anomalía" in cuerpo["advertencia"]
+    # El historial válido no cambia (alta y un service) y el intento queda sellado aparte.
     assert len(bc.historial[VIN]) == 2
+    assert [a["kilometrajeDeclarado"] for a in bc.anomalias[VIN]] == [18400]
+
+
+def test_el_contrato_decide_la_anomalia_aunque_la_base_no_la_prevea(client, bc, crear_concesionaria, alta_vehiculo):
+    c = crear_concesionaria()
+    alta_vehiculo(c["headers"])
+    # Un asiento sellado en cadena que la base no conoce eleva el km vigente.
+    bc.historial[VIN].append({"kilometraje": 50000, "tipoServicio": 1, "hashEvidencia": "0x" + "00" * 32,
+                              "concesionaria": "0x0", "timestamp": 0})
+    r = _service(client, c["headers"], 20000)
+    assert r.json()["km_regresivo"] is True and r.json()["km_anterior"] == 50000
 
 
 def test_service_informa_wallet_no_autorizada_con_ayuda(client, bc, crear_concesionaria, alta_vehiculo):
@@ -135,13 +161,69 @@ def test_consulta_publica_con_historial_y_puntaje(client, crear_concesionaria, a
     cuerpo = r.json()
     assert len(cuerpo["eventos"]) == 4
     anomalia = next(e for e in cuerpo["eventos"] if e["km_regresivo"])
-    assert anomalia["verificado"] is False
-    assert sum(e["verificado"] for e in cuerpo["eventos"]) == 3
+    assert anomalia["verificado"] is True and anomalia["tx_hash"] is not None
+    assert sum(e["verificado"] for e in cuerpo["eventos"]) == 4
     assert [e["con_evidencia"] for e in cuerpo["eventos"] if e["kilometraje"] == 10000] == [True]
     assert cuerpo["cadena"]["cantidad_eventos_on_chain"] == 3
-    assert cuerpo["cadena"]["anomalias_off_chain"] == 1
+    assert cuerpo["cadena"]["anomalias_on_chain"] == 1
+    assert cuerpo["cadena"]["anomalias_off_chain"] == 0
     assert cuerpo["score"]["puntaje"] <= 59  # tope por anomalía
     assert cuerpo["vehiculo"]["anomalias_count"] == 1
+
+
+def test_la_anomalia_sellada_se_muestra_aunque_se_borre_de_la_base(client, sesiones, crear_concesionaria, alta_vehiculo):
+    from app.models import Servicio
+
+    c = crear_concesionaria()
+    alta_vehiculo(c["headers"])
+    _service(client, c["headers"], 30560)
+    _service(client, c["headers"], 18400)  # anomalía sellada en cadena
+    db = sesiones()
+    db.query(Servicio).filter(Servicio.km_regresivo.is_(True)).delete()
+    db.commit()
+    db.close()
+
+    cuerpo = client.get(f"/publico/vehiculo/{VIN}").json()
+    anomalias = [e for e in cuerpo["eventos"] if e["km_regresivo"]]
+    assert len(anomalias) == 1
+    assert anomalias[0]["kilometraje"] == 18400 and anomalias[0]["verificado"] is True
+    assert anomalias[0]["concesionaria_nombre"] == c["nombre"]
+    assert cuerpo["score"]["puntaje"] <= 59
+
+
+def test_un_service_alterado_en_la_base_deja_de_estar_verificado(client, sesiones, crear_concesionaria, alta_vehiculo):
+    from app.models import Servicio
+
+    c = crear_concesionaria()
+    alta_vehiculo(c["headers"])
+    _service(client, c["headers"], 10000)
+    db = sesiones()
+    s = db.query(Servicio).filter(Servicio.kilometraje == 10000).one()
+    s.kilometraje = 9000  # adulteración de la base: el asiento en cadena dice 10.000
+    db.commit()
+    db.close()
+
+    eventos = client.get(f"/publico/vehiculo/{VIN}").json()["eventos"]
+    assert [e["verificado"] for e in eventos if e["kilometraje"] == 9000] == [False]
+
+
+def test_anomalia_anterior_al_sellado_en_cadena_se_informa_como_no_sellada(client, sesiones, crear_concesionaria, alta_vehiculo):
+    from app.models import Servicio, Vehiculo
+
+    c = crear_concesionaria()
+    alta_vehiculo(c["headers"])
+    db = sesiones()
+    v = db.query(Vehiculo).one()
+    alta = db.query(Servicio).one()
+    db.add(Servicio(vehiculo_id=v.id, concesionaria_id=alta.concesionaria_id, tipo_servicio=1,
+                    kilometraje=5, hash_evidencia="0" * 64, km_regresivo=True, km_anterior=10))
+    db.commit()
+    db.close()
+
+    cuerpo = client.get(f"/publico/vehiculo/{VIN}").json()
+    anomalia = next(e for e in cuerpo["eventos"] if e["km_regresivo"])
+    assert anomalia["verificado"] is False
+    assert cuerpo["cadena"]["anomalias_off_chain"] == 1
 
 
 def test_consulta_publica_inexistente(client):

@@ -16,7 +16,7 @@ vi.mock("../lib/api", () => ({
 beforeEach(() => {
   api.stats.mockResolvedValue({ vehiculos_registrados: 12, servicios_registrados: 40, concesionarias_activas: 3 });
   api.misVehiculos.mockResolvedValue(VEHICULOS);
-  api.estadoRed.mockResolvedValue({ block_number: 4567, chain_id: 80002, contract_address: "0xEF9c8Cec5453047a92bd83889C8148C541176fa0" });
+  api.estadoRed.mockResolvedValue({ block_number: 4567, chain_id: 80002, contract_address: "0xB6B07B384265D5087497863fd12977ecf1f98Bbb" });
 });
 
 describe("navegación y sesión", () => {

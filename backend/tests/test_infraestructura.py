@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 from eth_account import Account
 from web3 import Web3
 
@@ -85,10 +86,96 @@ def test_registrar_vehiculo_envia_y_devuelve_el_recibo(svc):
 
 def test_registrar_servicio_detecta_el_revert_antes_de_gastar_gas(svc):
     fn = _preparar_funcion(svc, "registrarServicio")
-    fn.call.side_effect = Exception("execution reverted: Kilometraje regresivo")
-    with pytest.raises(RuntimeError, match="Kilometraje regresivo"):
+    fn.call.side_effect = Exception("execution reverted: Vehiculo no registrado")
+    with pytest.raises(RuntimeError, match="Vehiculo no registrado"):
         svc.registrar_servicio(CLAVE, "VIN12", 10, 1, "00" * 32)
     svc.w3.eth.send_raw_transaction.assert_not_called()
+
+
+def test_registrar_servicio_valido_no_informa_anomalia(svc):
+    _preparar_funcion(svc, "registrarServicio")
+    svc.contract.events.AnomaliaKilometraje.return_value.process_receipt.return_value = []
+    res = svc.registrar_servicio(CLAVE, "VIN12", 10_000, 1, "00" * 32)
+    assert res["anomalia"] is False and res["km_vigente"] is None
+    assert res["tx_hash"] == "ab" * 32
+
+
+def test_registrar_servicio_lee_la_anomalia_del_recibo(svc):
+    _preparar_funcion(svc, "registrarServicio")
+    svc.contract.events.AnomaliaKilometraje.return_value.process_receipt.return_value = [
+        {"args": {"kilometrajeVigente": 30_560}}
+    ]
+    res = svc.registrar_servicio(CLAVE, "VIN12", 18_400, 2, "00" * 32)
+    assert res["anomalia"] is True and res["km_vigente"] == 30_560
+    svc.w3.eth.send_raw_transaction.assert_called_once()
+
+
+def test_lectura_de_anomalias(svc):
+    svc.contract.functions.obtenerAnomalias.return_value.call.return_value = [
+        (18_400, 30_560, 2, b"\x00" * 32, DESTINO, 500),
+    ]
+    assert svc.obtener_anomalias("VIN12") == [{
+        "kilometrajeDeclarado": 18_400, "kilometrajeVigente": 30_560, "tipoServicio": 2,
+        "hashEvidencia": "0x" + "00" * 32, "concesionaria": DESTINO, "timestamp": 500,
+    }]
+
+
+# --- Proveedor RPC de respaldo -------------------------------------------------
+
+def test_lee_los_proveedores_de_respaldo(monkeypatch):
+    monkeypatch.setattr(bc_mod.settings, "RPC_URL_FALLBACK", "http://respaldo-1, ,http://respaldo-2")
+    s = BlockchainService()
+    assert s.proveedores == [bc_mod.settings.RPC_URL, "http://respaldo-1", "http://respaldo-2"]
+
+
+def test_ante_una_falla_de_red_pasa_al_proveedor_de_respaldo(svc):
+    svc.proveedores = ["http://principal", "http://respaldo"]
+    svc.proveedor_activo = 0
+    svc._usar_proveedor = MagicMock(side_effect=lambda i: setattr(svc, "proveedor_activo", i))
+    intentos = []
+
+    def operacion():
+        intentos.append(svc.proveedor_activo)
+        if len(intentos) == 1:
+            raise requests.exceptions.ConnectionError("nodo caído")
+        return "ok"
+
+    assert svc._con_respaldo(operacion) == "ok"
+    assert intentos == [0, 1]
+
+
+def test_sin_respaldo_informa_que_no_hay_proveedor(svc):
+    svc.proveedores = ["http://principal"]
+    svc.proveedor_activo = 0
+
+    def operacion():
+        raise requests.exceptions.Timeout("sin respuesta")
+
+    with pytest.raises(bc_mod.ProveedorNoDisponible, match="Ningún proveedor RPC responde"):
+        svc._con_respaldo(operacion)
+
+
+def test_una_falla_de_red_en_el_preflight_no_se_confunde_con_un_revert(svc):
+    fn = _preparar_funcion(svc, "registrarServicio")
+    fn.call.side_effect = requests.exceptions.ConnectionError("nodo caído")
+    with pytest.raises(bc_mod.ProveedorNoDisponible):
+        svc.registrar_servicio(CLAVE, "VIN12", 10, 1, "00" * 32)
+    svc.w3.eth.send_raw_transaction.assert_not_called()
+
+
+def test_una_falla_de_red_al_pedir_el_nonce_habilita_el_reintento(svc):
+    _preparar_funcion(svc, "registrarServicio")
+    svc.w3.eth.get_transaction_count.side_effect = requests.exceptions.Timeout("sin respuesta")
+    with pytest.raises(bc_mod.ProveedorNoDisponible):
+        svc.registrar_servicio(CLAVE, "VIN12", 10, 1, "00" * 32)
+
+
+def test_cambiar_de_proveedor_reconstruye_el_cliente():
+    s = BlockchainService()
+    s.proveedores = ["http://principal", "http://respaldo"]
+    assert s._pasar_al_respaldo() is True
+    assert s.proveedor_activo == 1 and s.contract.address == s.address
+    assert s._pasar_al_respaldo() is False
 
 
 def test_transaccion_revertida_en_cadena_informa_el_motivo(svc):
@@ -142,6 +229,7 @@ def test_fondear_balance_e_info_de_red(svc):
     assert svc.balance_matic(DESTINO) == 1.5
     svc.w3.eth.block_number = 123
     assert svc.info_red()["block_number"] == 123
+    assert svc.info_red()["proveedores_rpc"] == len(svc.proveedores)
 
 
 def test_crear_wallet_genera_un_par_valido():
@@ -175,6 +263,30 @@ def test_con_r2_sube_y_firma_urls(monkeypatch):
     assert storage.upload_evidencia(b"x", "vehiculos/a.pdf", "application/pdf").startswith("r2://")
     assert cliente.put_object.call_count == 2
     assert storage.generate_presigned_url("vehiculos/a.pdf") == "https://firmada"
+
+
+# --- Cifrado de las claves custodiadas ------------------------------------------
+
+def test_cifrado_con_llave_propia_y_compatibilidad_con_la_anterior(monkeypatch):
+    from cryptography.fernet import Fernet, InvalidToken
+
+    from app.services import security
+
+    clave_privada = "0x" + "44" * 32
+    monkeypatch.setattr(security.settings, "WALLET_ENCRYPTION_KEY", "")
+    cifrada_antes = security.encrypt_pk(clave_privada)
+
+    monkeypatch.setattr(security.settings, "WALLET_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    cifrada_ahora = security.encrypt_pk(clave_privada)
+    # Lo cifrado con la llave propia no se descifra con la derivada del secreto de sesiones.
+    with pytest.raises(InvalidToken):
+        security._fernet_legacy().decrypt(cifrada_ahora.encode())
+    assert security.decrypt_pk(cifrada_ahora) == clave_privada
+    assert security.decrypt_pk(cifrada_antes) == clave_privada
+    rotada = security.recifrar_pk(cifrada_antes)
+    assert security.decrypt_pk(rotada) == clave_privada
+    with pytest.raises(InvalidToken):
+        security._fernet_legacy().decrypt(rotada.encode())
 
 
 # --- Utilidades ---------------------------------------------------------------

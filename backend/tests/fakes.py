@@ -1,7 +1,7 @@
 """Dobles de prueba para la capa on-chain y el almacén de objetos.
 
 FakeBlockchain reproduce las reglas del contrato HistorialCeroKM (autorización,
-alta única, kilometraje no regresivo, tipo 0 reservado) sin red: permite probar
+alta única, sellado del kilometraje regresivo como anomalía, tipo 0 reservado) sin red: permite probar
 la API de punta a punta sin Polygon. Los mensajes de error son los del contrato.
 """
 from datetime import datetime, timezone
@@ -17,6 +17,7 @@ class FakeBlockchain:
         self.autorizadas: set[str] = set()
         self.vehiculos: dict[str, dict] = {}
         self.historial: dict[str, list[dict]] = {}
+        self.anomalias: dict[str, list[dict]] = {}
         self.bloque = 1000
         self.w3 = SimpleNamespace(eth=SimpleNamespace(chain_id=80002))
         # Permite simular fallas de la red en una operación concreta.
@@ -91,15 +92,24 @@ class FakeBlockchain:
         direccion = self._firmante(signer_pk)
         if vin not in self.vehiculos:
             raise RuntimeError("Vehiculo no registrado")
-        if km < self.historial[vin][-1]["kilometraje"]:
-            raise RuntimeError("Kilometraje regresivo")
         tx = self._tx()
+        vigente = self.historial[vin][-1]["kilometraje"]
+        if km < vigente:
+            # Como el contrato: el intento regresivo se sella como anomalía, no como evento válido.
+            self.anomalias.setdefault(vin, []).append({
+                "kilometrajeDeclarado": km, "kilometrajeVigente": vigente, "tipoServicio": tipo,
+                "hashEvidencia": "0x" + hash_hex, "concesionaria": direccion, "timestamp": 1_760_000_000,
+            })
+            return {**tx, "anomalia": True, "km_vigente": vigente}
         self.historial[vin].append({"kilometraje": km, "tipoServicio": tipo, "hashEvidencia": "0x" + hash_hex,
                                     "concesionaria": direccion, "timestamp": 0})
-        return tx
+        return {**tx, "anomalia": False, "km_vigente": None}
 
     def obtener_historial(self, vin: str) -> list[dict]:
         return list(self.historial.get(vin, []))
+
+    def obtener_anomalias(self, vin: str) -> list[dict]:
+        return list(self.anomalias.get(vin, []))
 
     def info_vehiculo(self, vin: str) -> dict | None:
         return self.vehiculos.get(vin)

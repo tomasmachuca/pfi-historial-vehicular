@@ -15,7 +15,7 @@ from web3.middleware import ExtraDataToPOAMiddleware
 
 # --- Config de la red (los mismos valores del .env, hardcodeables si querés) ---
 RPC_URL = "https://polygon-amoy-bor-rpc.publicnode.com"
-CONTRACT = "0xEF9c8Cec5453047a92bd83889C8148C541176fa0"
+CONTRACT = "0xB6B07B384265D5087497863fd12977ecf1f98Bbb"
 ABI_PATH = Path(__file__).resolve().parent / "app" / "abi" / "HistorialCeroKM.json"
 
 TIPOS = {0: "Alta / 0km", 1: "Service", 2: "Reparacion", 3: "Inspeccion"}

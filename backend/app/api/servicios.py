@@ -52,67 +52,9 @@ async def registrar_service(
             url = upload_evidencia(contenido, key, archivo.content_type or "application/octet-stream")
             archivo_nombre = archivo.filename
 
-    # Km máximo ya sellado on-chain (alta + services legítimos). Las anomalías previas
-    # no cuentan como línea de base: se comparan siempre contra el historial honesto.
-    km_max_onchain = (
-        db.query(func.max(Servicio.kilometraje))
-        .filter(Servicio.vehiculo_id == v.id, Servicio.km_regresivo.is_(False))
-        .scalar()
-    ) or 0
-
-    # --- Caso anómalo: km regresivo -------------------------------------------
-    # El contrato rechaza en cadena un km menor al último (revierte). En vez de
-    # descartarlo, lo guardamos off-chain como "mancha" y marcamos vehículo y
-    # concesionaria, para que alimente el scoring del historial.
-    if kilometraje < km_max_onchain:
-        s = Servicio(
-            vehiculo_id=v.id,
-            concesionaria_id=current.id,
-            tipo_servicio=tipo_servicio,
-            kilometraje=kilometraje,
-            descripcion=descripcion,
-            archivo_url=url,
-            archivo_nombre=archivo_nombre,
-            hash_evidencia=hash_hex,
-            tx_hash=None,
-            block_number=None,
-            chain_timestamp=None,
-            km_regresivo=True,
-            km_anterior=km_max_onchain,
-        )
-        db.add(s)
-        v.anomalias_count = (v.anomalias_count or 0) + 1
-        current.anomalias_count = (current.anomalias_count or 0) + 1
-        db.commit()
-        db.refresh(s)
-
-        diferencia = km_max_onchain - kilometraje
-
-        # Miles con punto (formato AR): formateamos cada número por separado para
-        # no tocar las comas de la oración.
-        def f(n):
-            return f"{n:,}".replace(",", ".")
-
-        return {
-            "id": str(s.id),
-            "km_regresivo": True,
-            "km_anterior": km_max_onchain,
-            "km_cargado": kilometraje,
-            "diferencia": diferencia,
-            "hash_evidencia": s.hash_evidencia,
-            "archivo_url": s.archivo_url,
-            "con_evidencia": url is not None,
-            "tx_hash": None,
-            "block_number": None,
-            "advertencia": (
-                f"Kilometraje regresivo: se cargó {f(kilometraje)} km, "
-                f"{f(diferencia)} km por debajo del último kilometraje registrado ({f(km_max_onchain)} km). "
-                "El service NO se selló en blockchain y quedó marcado como anomalía. "
-                "El vehículo y la concesionaria fueron señalados en su historial."
-            ),
-        }
-
-    # --- Caso normal: se sella en cadena --------------------------------------
+    # Todo service va al contrato, que es quien decide: si el km es menor al último
+    # sellado, no lo agrega al historial válido sino que lo sella como anomalía. Así
+    # el intento de retroceso queda en cadena y no depende de esta base de datos.
     bc = get_blockchain()
     pk = decrypt_pk(current.wallet_pk_enc)
     try:
@@ -130,6 +72,7 @@ async def registrar_service(
             msg = f"{msg}. On-chain autorizada={ok}. {hint}"
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Error en blockchain: {msg}")
 
+    anomalia = bool(res.get("anomalia"))
     s = Servicio(
         vehiculo_id=v.id,
         concesionaria_id=current.id,
@@ -142,18 +85,45 @@ async def registrar_service(
         tx_hash=res["tx_hash"],
         block_number=res["block_number"],
         chain_timestamp=res["timestamp"],
-        km_regresivo=False,
+        km_regresivo=anomalia,
+        km_anterior=res.get("km_vigente") if anomalia else None,
     )
     db.add(s)
+    if anomalia:
+        v.anomalias_count = (v.anomalias_count or 0) + 1
+        current.anomalias_count = (current.anomalias_count or 0) + 1
     db.commit()
     db.refresh(s)
 
-    return {
+    respuesta = {
         "id": str(s.id),
-        "km_regresivo": False,
+        "km_regresivo": anomalia,
         "tx_hash": s.tx_hash,
         "block_number": s.block_number,
         "hash_evidencia": s.hash_evidencia,
         "archivo_url": s.archivo_url,
         "con_evidencia": url is not None,
     }
+    if not anomalia:
+        return respuesta
+
+    km_vigente = res["km_vigente"]
+    diferencia = km_vigente - kilometraje
+
+    # Miles con punto (formato AR): formateamos cada número por separado para
+    # no tocar las comas de la oración.
+    def f(n):
+        return f"{n:,}".replace(",", ".")
+
+    respuesta.update({
+        "km_anterior": km_vigente,
+        "km_cargado": kilometraje,
+        "diferencia": diferencia,
+        "advertencia": (
+            f"Kilometraje regresivo: se cargó {f(kilometraje)} km, "
+            f"{f(diferencia)} km por debajo del último kilometraje registrado ({f(km_vigente)} km). "
+            "El contrato no lo agregó al historial válido: lo selló en blockchain como anomalía, "
+            "que queda visible en forma permanente en el historial público del vehículo."
+        ),
+    })
+    return respuesta

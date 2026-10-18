@@ -33,6 +33,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
 
     bc = get_blockchain()
     on_chain = bc.obtener_historial(v.vin)
+    anomalias_chain = bc.obtener_anomalias(v.vin)
     info_chain = bc.info_vehiculo(v.vin) or {}
 
     servicios_db = (
@@ -44,25 +45,38 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
     tipos = {t.codigo: t.nombre for t in db.query(TipoServicio).all()}
     conces = db.query(Concesionaria).all()
     conces_by_id = {c.id: c for c in conces}
+    conces_by_wallet = {(c.wallet_address or "").lower(): c for c in conces}
 
-    # Km de los eventos realmente sellados en el contrato ACTUAL (multiconjunto).
-    # Se usa para marcar cada service de la DB como verificado o no: si el vehículo
-    # se registró contra un contrato anterior, sus tx viejas no cuentan.
-    on_chain_kms = {}
-    for ev in on_chain:
-        on_chain_kms[ev["kilometraje"]] = on_chain_kms.get(ev["kilometraje"], 0) + 1
+    # Asientos realmente sellados en el contrato ACTUAL, como multiconjuntos de
+    # (kilometraje, tipo, hash). Cada service de la base se marca como verificado
+    # solo si coincide con un asiento en cadena en esos tres campos: si la base se
+    # alterara, o el vehículo se registró contra un contrato anterior, no coincide.
+    validos_chain = _multiconjunto(
+        (ev["kilometraje"], ev["tipoServicio"], _norm(ev["hashEvidencia"])) for ev in on_chain
+    )
+    anomalias_pendientes = list(anomalias_chain)
 
-    # Armamos el timeline desde la DB (registro completo). La cadena solo confirma.
+    # Armamos el timeline desde la DB (descripción, comprobante, tx). La cadena confirma.
     eventos = []
     insumos_score = []
     for s in servicios_db:
         c = conces_by_id.get(s.concesionaria_id)
         # Hay comprobante si se selló su hash; la URL puede faltar si el almacén no está configurado.
         con_evidencia = bool(s.hash_evidencia) and s.hash_evidencia != ZERO_HASH_HEX
-        # Verificado = no es anomalía, tiene tx y hay un evento on-chain con ese km.
+        clave = (s.kilometraje, s.tipo_servicio, _norm(s.hash_evidencia))
         verificado = False
-        if not s.km_regresivo and s.tx_hash and on_chain_kms.get(s.kilometraje, 0) > 0:
-            on_chain_kms[s.kilometraje] -= 1
+        if s.km_regresivo:
+            # Anomalía: verificada si está sellada en la lista de anomalías del contrato.
+            match = next(
+                (a for a in anomalias_pendientes
+                 if (a["kilometrajeDeclarado"], a["tipoServicio"], _norm(a["hashEvidencia"])) == clave),
+                None,
+            )
+            if match is not None:
+                anomalias_pendientes.remove(match)
+                verificado = True
+        elif s.tx_hash and validos_chain.get(clave, 0) > 0:
+            validos_chain[clave] -= 1
             verificado = True
         eventos.append({
             "kilometraje": s.kilometraje,
@@ -91,11 +105,46 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             anomalia=bool(s.km_regresivo),
             es_alta=s.tipo_servicio == 0,
         ))
-    anomalias = [s for s in servicios_db if s.km_regresivo]
+    # Anomalías selladas en cadena que la base no tiene (por ejemplo, si se borraron
+    # de la base): se muestran igual, a partir de lo que el contrato conserva.
+    for a in anomalias_pendientes:
+        c = conces_by_wallet.get(str(a["concesionaria"]).lower())
+        fecha = datetime.fromtimestamp(a["timestamp"], tz=timezone.utc)
+        eventos.append({
+            "kilometraje": a["kilometrajeDeclarado"],
+            "tipo_servicio": a["tipoServicio"],
+            "tipo_nombre": tipos.get(a["tipoServicio"], f"Tipo {a['tipoServicio']}"),
+            "hash_evidencia": _norm(a["hashEvidencia"]),
+            "concesionaria_address": a["concesionaria"],
+            "concesionaria_nombre": c.nombre if c else "Concesionaria",
+            "chain_timestamp": fecha.isoformat(),
+            "descripcion": None,
+            "archivo_url": None,
+            "con_evidencia": _norm(a["hashEvidencia"]) != ZERO_HASH_HEX,
+            "tx_hash": None,
+            "block_number": None,
+            "km_regresivo": True,
+            "km_anterior": a["kilometrajeVigente"],
+            "verificado": True,
+            "_orden": fecha,
+        })
+        insumos_score.append(EventoScore(
+            kilometraje=a["kilometrajeDeclarado"], fecha=fecha,
+            concesionaria=str(c.id) if c else str(a["concesionaria"]),
+            con_evidencia=False, verificado=True, anomalia=True, es_alta=False,
+        ))
+
+    anomalias_total = sum(1 for e in eventos if e["km_regresivo"])
+    anomalias_selladas = sum(1 for e in eventos if e["km_regresivo"] and e["verificado"])
 
     # Orden cronológico por fecha de carga; las anomalías se intercalan donde ocurrieron.
     _min_dt = datetime.min.replace(tzinfo=timezone.utc)
-    eventos.sort(key=lambda e: e["_orden"] or _min_dt)
+
+    def _orden(e):
+        f = e["_orden"] or _min_dt
+        return f if f.tzinfo else f.replace(tzinfo=timezone.utc)
+
+    eventos.sort(key=_orden)
     for e in eventos:
         e.pop("_orden", None)
 
@@ -108,7 +157,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             "anio": v.anio,
             "color": v.color,
             "km_inicial": v.km_inicial,
-            "anomalias_count": v.anomalias_count or 0,
+            "anomalias_count": max(v.anomalias_count or 0, anomalias_total),
             "creado_en": v.creado_en.isoformat() if v.creado_en else None,
         },
         "eventos": eventos,
@@ -119,9 +168,23 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
             "contrato": bc.address,
             "chain_id": bc.w3.eth.chain_id,
             "cantidad_eventos_on_chain": len(on_chain),
-            "anomalias_off_chain": len(anomalias),
+            "anomalias_on_chain": len(anomalias_chain),
+            # Anomalías anteriores al sellado en cadena (solo registradas en la base).
+            "anomalias_off_chain": anomalias_total - anomalias_selladas,
         },
     }
+
+
+def _norm(hash_hex: str | None) -> str:
+    """Hash en hexadecimal, sin prefijo y en minúsculas, para comparar base y cadena."""
+    return (hash_hex or "").lower().removeprefix("0x")
+
+
+def _multiconjunto(claves) -> dict:
+    conteo: dict = {}
+    for k in claves:
+        conteo[k] = conteo.get(k, 0) + 1
+    return conteo
 
 
 @router.get("/stats")

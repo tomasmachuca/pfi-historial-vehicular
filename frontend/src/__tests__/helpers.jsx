@@ -70,7 +70,7 @@ export function consulta({ anomalias = 1, verificados = true } = {}) {
         { clave: "evidencia", nombre: "Cobertura de evidencia", puntos: 10, maximo: 20 },
       ],
     },
-    cadena: { verificado: true, tx_hash_alta: "0x" + "1".repeat(64), contrato: "0xEF9c8Cec5453047a92bd83889C8148C541176fa0",
+    cadena: { verificado: true, tx_hash_alta: "0x" + "1".repeat(64), contrato: "0xB6B07B384265D5087497863fd12977ecf1f98Bbb",
       chain_id: 80002, cantidad_eventos_on_chain: 2, anomalias_off_chain: anomalias },
   };
 }

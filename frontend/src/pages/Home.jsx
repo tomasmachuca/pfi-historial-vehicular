@@ -37,7 +37,7 @@ export default function Home() {
           </span>
 
           <h1 className="mt-5 text-4xl sm:text-6xl font-semibold tracking-tight text-white animate-fade-up [animation-delay:60ms]">
-            Historial vehicular oficial,
+            Historial vehicular verificable,
             <br />
             <span className="bg-gradient-to-r from-[#ffd98a] to-white bg-clip-text text-transparent">
               inmutable desde los 0km.
@@ -69,7 +69,7 @@ export default function Home() {
               icon={<Car size={18} />}
               label="Vehiculos registrados"
               value={fmtNumber(stats?.vehiculos_registrados ?? 0)}
-              hint="Altas oficiales certificadas"
+              hint="Altas 0km selladas en cadena"
               loading={cargando}
             />
             <StatCard

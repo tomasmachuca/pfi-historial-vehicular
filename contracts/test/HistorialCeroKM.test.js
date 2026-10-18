@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 describe("HistorialCeroKM", function () {
   let contrato, admin, conces1, conces2, terceroNoAutorizado;
@@ -133,11 +134,10 @@ describe("HistorialCeroKM", function () {
       expect(await contrato.cantidadEventos(VIN_DEMO)).to.equal(2);
     });
 
-    it("rechaza kilometraje regresivo", async () => {
-      await contrato.connect(conces1).registrarServicio(VIN_DEMO, 10000, 1, HASH_DEMO);
-      await expect(
-        contrato.connect(conces1).registrarServicio(VIN_DEMO, 5000, 2, HASH_DEMO)
-      ).to.be.revertedWith("Kilometraje regresivo");
+    it("devuelve true al sellar un service valido", async () => {
+      expect(
+        await contrato.connect(conces1).registrarServicio.staticCall(VIN_DEMO, 10000, 1, HASH_DEMO)
+      ).to.equal(true);
     });
 
     it("rechaza tipo 0 (reservado para alta)", async () => {
@@ -176,6 +176,86 @@ describe("HistorialCeroKM", function () {
       await expect(
         contrato.connect(conces1).registrarServicio(VIN_DEMO, 10000, 1, HASH_DEMO)
       ).to.be.revertedWith("No autorizado. Solo red oficial.");
+    });
+  });
+
+  describe("Kilometraje regresivo", () => {
+    beforeEach(async () => {
+      await contrato.autorizarConcesionaria(conces1.address, "Conces 1");
+      await contrato.autorizarConcesionaria(conces2.address, "Conces 2");
+      await contrato.connect(conces1).registrarVehiculo(VIN_DEMO, 0, HASH_DEMO);
+      await contrato.connect(conces1).registrarServicio(VIN_DEMO, 30560, 3, HASH_DEMO);
+    });
+
+    it("sella el intento como anomalia y emite el evento", async () => {
+      await expect(contrato.connect(conces2).registrarServicio(VIN_DEMO, 18400, 2, HASH_NULO))
+        .to.emit(contrato, "AnomaliaKilometraje")
+        .withArgs(VIN_DEMO, conces2.address, 18400, 30560, 2, HASH_NULO, anyValue);
+    });
+
+    it("no emite ServicioRegistrado para el intento regresivo", async () => {
+      await expect(
+        contrato.connect(conces2).registrarServicio(VIN_DEMO, 18400, 2, HASH_DEMO)
+      ).to.not.emit(contrato, "ServicioRegistrado");
+    });
+
+    it("devuelve false para el intento regresivo", async () => {
+      expect(
+        await contrato.connect(conces2).registrarServicio.staticCall(VIN_DEMO, 18400, 2, HASH_DEMO)
+      ).to.equal(false);
+    });
+
+    it("no altera el historial valido", async () => {
+      await contrato.connect(conces2).registrarServicio(VIN_DEMO, 18400, 2, HASH_DEMO);
+      expect(await contrato.cantidadEventos(VIN_DEMO)).to.equal(2);
+      const ultimo = await contrato.eventoPorIndice(VIN_DEMO, 1);
+      expect(ultimo.kilometraje).to.equal(30560);
+    });
+
+    it("conserva el detalle de la anomalia en cadena", async () => {
+      await contrato.connect(conces2).registrarServicio(VIN_DEMO, 18400, 2, HASH_DEMO);
+      expect(await contrato.cantidadAnomalias(VIN_DEMO)).to.equal(1);
+      const [a] = await contrato.obtenerAnomalias(VIN_DEMO);
+      expect(a.kilometrajeDeclarado).to.equal(18400);
+      expect(a.kilometrajeVigente).to.equal(30560);
+      expect(a.tipoServicio).to.equal(2);
+      expect(a.hashEvidencia).to.equal(HASH_DEMO);
+      expect(a.concesionaria).to.equal(conces2.address);
+    });
+
+    it("la anomalia no cambia la linea de base del kilometraje", async () => {
+      await contrato.connect(conces2).registrarServicio(VIN_DEMO, 18400, 2, HASH_DEMO);
+      // 25.000 sigue siendo menor al último km válido (30.560): segunda anomalía.
+      await contrato.connect(conces2).registrarServicio(VIN_DEMO, 25000, 2, HASH_DEMO);
+      expect(await contrato.cantidadAnomalias(VIN_DEMO)).to.equal(2);
+      await contrato.connect(conces1).registrarServicio(VIN_DEMO, 40000, 4, HASH_DEMO);
+      expect(await contrato.cantidadEventos(VIN_DEMO)).to.equal(3);
+    });
+
+    it("marca como anomalia un kilometraje menor al del alta", async () => {
+      const VIN_2 = "8AP7654321XYZ0001";
+      await contrato.connect(conces1).registrarVehiculo(VIN_2, 120, HASH_DEMO);
+      await contrato.connect(conces1).registrarServicio(VIN_2, 50, 7, HASH_DEMO);
+      expect(await contrato.cantidadAnomalias(VIN_2)).to.equal(1);
+      expect(await contrato.cantidadEventos(VIN_2)).to.equal(1);
+    });
+
+    it("impide sellar anomalias desde una wallet no autorizada", async () => {
+      await expect(
+        contrato.connect(terceroNoAutorizado).registrarServicio(VIN_DEMO, 18400, 2, HASH_DEMO)
+      ).to.be.revertedWith("No autorizado. Solo red oficial.");
+      expect(await contrato.cantidadAnomalias(VIN_DEMO)).to.equal(0);
+    });
+
+    it("permite a cualquiera leer las anomalias", async () => {
+      await contrato.connect(conces2).registrarServicio(VIN_DEMO, 18400, 2, HASH_DEMO);
+      const lista = await contrato.connect(terceroNoAutorizado).obtenerAnomalias(VIN_DEMO);
+      expect(lista.length).to.equal(1);
+    });
+
+    it("informa cero anomalias para un historial limpio", async () => {
+      expect(await contrato.cantidadAnomalias(VIN_DEMO)).to.equal(0);
+      expect((await contrato.obtenerAnomalias(VIN_DEMO)).length).to.equal(0);
     });
   });
 

@@ -1,7 +1,7 @@
 import base64
 from datetime import datetime, timedelta, timezone
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, MultiFernet
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -33,11 +33,25 @@ def decode_access_token(token: str) -> dict:
         raise ValueError(str(e))
 
 
-def _fernet() -> Fernet:
+def _fernet_legacy() -> Fernet:
+    """Llave derivada de JWT_SECRET, usada por las versiones anteriores. Se conserva
+    solo para poder descifrar las claves privadas cifradas antes de la rotación."""
     raw = settings.JWT_SECRET.encode("utf-8")
     raw = (raw * ((32 // len(raw)) + 1))[:32]
     key = base64.urlsafe_b64encode(raw)
     return Fernet(key)
+
+
+def _fernet() -> MultiFernet:
+    """Cifra con WALLET_ENCRYPTION_KEY, una llave propia e independiente del secreto
+    de las sesiones; descifra con ella o con la llave anterior."""
+    llaves = [Fernet(settings.WALLET_ENCRYPTION_KEY)] if settings.WALLET_ENCRYPTION_KEY else []
+    return MultiFernet([*llaves, _fernet_legacy()])
+
+
+def recifrar_pk(token: str) -> str:
+    """Vuelve a cifrar una clave con la llave vigente (rotación)."""
+    return _fernet().rotate(token.encode("utf-8")).decode("utf-8")
 
 
 def encrypt_pk(plain_pk: str) -> str:

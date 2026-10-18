@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Search, ShieldCheck, ExternalLink, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Search, ShieldCheck, ExternalLink, AlertTriangle, Share2, FileDown } from "lucide-react";
 import { api } from "../lib/api";
 import { fmtNumber, fmtDate, shorten, txUrl } from "../lib/format";
 import KilometrajeChart from "../components/KilometrajeChart";
@@ -8,25 +9,40 @@ import EventoCard from "../components/EventoCard";
 import ScoreCard from "../components/ScoreCard";
 
 export default function ConsultaPublica() {
-  const [identificador, setIdentificador] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [identificador, setIdentificador] = useState(params.get("q") || "");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const buscar = async (e) => {
-    e.preventDefault();
+  const consultar = async (texto) => {
+    const ident = texto.trim().toUpperCase();
     setError(null);
     setLoading(true);
     setData(null);
     try {
-      const r = await api.consultaPublica(identificador.trim().toUpperCase());
+      const r = await api.consultaPublica(ident);
       setData(r);
+      // El identificador queda en la URL para poder compartir el enlace del historial.
+      setParams({ q: ident }, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  const buscar = (e) => {
+    e.preventDefault();
+    consultar(identificador);
+  };
+
+  // Un enlace compartido (/consulta?q=PATENTE) abre directamente el historial.
+  // Solo al montar: las búsquedas posteriores actualizan la URL, no la disparan.
+  useEffect(() => {
+    const q = params.get("q");
+    if (q) consultar(q);
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
@@ -37,7 +53,7 @@ export default function ConsultaPublica() {
         </p>
       </div>
 
-      <form onSubmit={buscar} className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto">
+      <form onSubmit={buscar} className="no-print flex flex-col sm:flex-row gap-2 max-w-xl mx-auto">
         <div className="relative flex-1">
           <Search
             size={16}
@@ -104,8 +120,9 @@ function Resultado({ data }) {
             </p>
             <p className="mt-1">
               Se intentó registrar {anomalias.length === 1 ? "un service" : "services"} con kilometraje menor al ya sellado en
-              blockchain. Esos registros no pudieron sellarse en cadena y quedaron marcados como sospechosos. Revisá la
-              línea de tiempo antes de confiar en este vehículo.
+              blockchain. El contrato no {anomalias.length === 1 ? "lo aceptó" : "los aceptó"} como válido y{" "}
+              {anomalias.length === 1 ? "lo selló" : "los selló"} como anomalía, que no puede borrarse. Revisá la línea de
+              tiempo antes de confiar en este vehículo.
             </p>
           </div>
         </div>
@@ -159,6 +176,8 @@ function Resultado({ data }) {
         </div>
       </div>
 
+      <Acciones vehiculo={vehiculo} />
+
       <ScoreCard score={data.score} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -168,7 +187,7 @@ function Resultado({ data }) {
 
       <div>
         <div className="flex items-baseline justify-between mb-3">
-          <h3 className="font-medium text-slate-700">Linea de tiempo certificada</h3>
+          <h3 className="font-medium text-slate-700">Línea de tiempo verificable</h3>
           <span className="text-xs text-slate-500">
             {eventos.length} {eventos.length === 1 ? "evento" : "eventos"}
           </span>
@@ -179,6 +198,52 @@ function Resultado({ data }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Compartir el enlace del historial por mensajería y descargarlo en PDF, como pidió
+// el comprador entrevistado. El PDF se genera con la impresión del navegador.
+function Acciones({ vehiculo }) {
+  const [aviso, setAviso] = useState(null);
+  const ident = vehiculo.patente || vehiculo.vin;
+  const enlace = `${window.location.origin}/consulta?q=${encodeURIComponent(ident)}`;
+  const texto = `Historial de ${vehiculo.marca} ${vehiculo.modelo} (${ident}) en Trazarg`;
+
+  const compartir = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Trazarg", text: texto, url: enlace });
+      } catch {
+        // El usuario cerró el menú de compartir: no hay nada que informar.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(enlace);
+      setAviso("Enlace copiado");
+    } catch {
+      setAviso(enlace);
+    }
+  };
+
+  return (
+    <div className="no-print flex flex-wrap items-center justify-end gap-2">
+      {aviso && <span className="text-xs text-slate-500 mr-auto">{aviso}</span>}
+      <a
+        href={`https://wa.me/?text=${encodeURIComponent(`${texto}: ${enlace}`)}`}
+        target="_blank"
+        rel="noreferrer"
+        className="btn-secondary"
+      >
+        <Share2 size={16} /> WhatsApp
+      </a>
+      <button type="button" onClick={compartir} className="btn-secondary">
+        <Share2 size={16} /> Compartir enlace
+      </button>
+      <button type="button" onClick={() => window.print()} className="btn-secondary">
+        <FileDown size={16} /> Descargar PDF
+      </button>
     </div>
   );
 }

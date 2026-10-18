@@ -139,3 +139,20 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Descarga del historial en PDF (impresión del navegador): solo el historial,
+   sin navegación, buscador ni botones, y sin cortar una tarjeta entre páginas. */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  .card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+  .animate-fade-up {
+    animation: none !important;
+  }
+}
