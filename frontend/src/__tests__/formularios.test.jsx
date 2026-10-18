@@ -101,15 +101,18 @@ describe("registro de service", () => {
   it("muestra la anomalía cuando el kilometraje es regresivo", async () => {
     api.registrarServicio.mockResolvedValue({
       km_regresivo: true, km_cargado: 18400, km_anterior: 30560, diferencia: 12160,
-      advertencia: "Kilometraje regresivo: el service NO se selló en blockchain.",
+      advertencia: "Kilometraje regresivo: sellado en blockchain como anomalía.",
+      tx_hash: "0x" + "e".repeat(64),
     });
     iniciarSesion();
     renderApp("/servicios/nuevo");
     completar("VIN o patente del vehiculo", "AB123CD");
     completar("Kilometraje", "18400");
+    expect(screen.getByText("18.400 km")).toBeTruthy();
     fireEvent.click(screen.getByText("Sellar en blockchain"));
     expect(await screen.findByText("Anomalía registrada: kilometraje regresivo")).toBeTruthy();
     expect(screen.getByText("-12.160 km")).toBeTruthy();
+    expect(screen.getByText(/^tx: 0xeeeeeeee/)).toBeTruthy();
   });
 
   it("muestra el error del backend y permite cancelar", async () => {

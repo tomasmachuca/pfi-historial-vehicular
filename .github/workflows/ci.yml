@@ -31,7 +31,8 @@ jobs:
       - name: Instalar dependencias del proyecto
         run: |
           pip install -r requirements.txt
-          pip install ruff pytest pytest-cov
+          # ruff fijado: una versión nueva puede activar reglas por defecto y romper el job sin cambios en el código.
+          pip install ruff==0.17.1 pytest pytest-cov
 
       - name: Ejecutar Linter (Verificacion de Estilo)
         run: ruff check .

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func
@@ -59,7 +59,7 @@ async def alta_vehiculo(
         contenido = await archivo.read()
         if contenido:
             hash_hex = sha256_bytes(contenido)
-            key = f"vehiculos/{vin}/alta-{int(datetime.now(timezone.utc).timestamp())}-{archivo.filename}"
+            key = f"vehiculos/{vin}/alta-{int(datetime.now(UTC).timestamp())}-{archivo.filename}"
             archivo_url = upload_evidencia(
                 contenido, key, archivo.content_type or "application/octet-stream"
             )

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Wrench, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
-import { txUrl, shorten } from "../lib/format";
+import { txUrl, shorten, fmtNumber } from "../lib/format";
 
 const TIPOS = [
   { codigo: 1, nombre: "Service 10.000 km" },
@@ -72,9 +72,20 @@ export default function RegistrarServicio() {
                 <span>Último on-chain: <strong>{resultado.km_anterior?.toLocaleString("es-AR")}</strong></span>
                 <span>Diferencia: <strong>-{resultado.diferencia?.toLocaleString("es-AR")} km</strong></span>
               </div>
-              <p className="text-xs text-slate-400 mt-4">
-                No se selló en blockchain. Quedó marcado en el historial del vehículo y de la concesionaria.
+              <p className="text-xs text-slate-500 mt-4">
+                El contrato no lo agregó al historial válido: lo selló en blockchain como anomalía, visible en forma
+                permanente en el historial público del vehículo.
               </p>
+              {resultado.tx_hash && (
+                <a
+                  href={txUrl(resultado.tx_hash)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block mt-3 text-brand-500 hover:text-brand-600 text-sm font-mono"
+                >
+                  tx: {shorten(resultado.tx_hash, 10, 8)}
+                </a>
+              )}
             </>
           ) : (
             <>
@@ -153,6 +164,10 @@ export default function RegistrarServicio() {
               onChange={onChange}
               required
             />
+            {/* El km sellado no se puede corregir: se muestra en cifras para detectar un error de tipeo. */}
+            <p className="text-xs text-slate-500 mt-1.5">
+              Se sellará: <strong>{fmtNumber(Number(form.kilometraje) || 0)} km</strong>
+            </p>
           </div>
         </div>
 

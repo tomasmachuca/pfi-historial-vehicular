@@ -16,10 +16,13 @@ services:
       # --- Públicos (blockchain testnet Amoy) ---
       - key: RPC_URL
         value: https://polygon-amoy-bor-rpc.publicnode.com
+      # Proveedores de respaldo (separados por coma) si el principal no responde.
+      - key: RPC_URL_FALLBACK
+        value: https://polygon-amoy.drpc.org
       - key: CHAIN_ID
         value: "80002"
       - key: CONTRACT_ADDRESS
-        value: "0xEF9c8Cec5453047a92bd83889C8148C541176fa0"
+        value: "0xB6B07B384265D5087497863fd12977ecf1f98Bbb"
       - key: R2_BUCKET
         value: historial-evidencias
       # --- Secretos y valores por entorno (cargar en el dashboard) ---
@@ -30,6 +33,9 @@ services:
       - key: ADMIN_API_TOKEN
         sync: false
       - key: ADMIN_PRIVATE_KEY
+        sync: false
+      # Llave Fernet propia para cifrar las claves custodiadas (Fernet.generate_key()).
+      - key: WALLET_ENCRYPTION_KEY
         sync: false
       - key: R2_ACCOUNT_ID
         sync: false

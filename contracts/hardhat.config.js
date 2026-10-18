@@ -34,4 +34,9 @@ module.exports = {
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY || process.env.POLYGONSCAN_API_KEY || "",
   },
+  // El plugin usa la API v1 de Sourcify, ya dada de baja: para Sourcify se usa
+  // scripts/verificarSourcify.js. Polygonscan requiere ETHERSCAN_API_KEY.
+  sourcify: {
+    enabled: false,
+  },
 };

@@ -5,10 +5,24 @@ pragma solidity ^0.8.19;
  * HistorialCeroKM
  * Registro inmutable de eventos de mantenimiento oficial sobre vehículos 0km.
  * Solo billeteras de concesionarias autorizadas pueden registrar eventos.
+ *
+ * Un service con kilometraje menor al último sellado no se agrega al historial
+ * válido: el contrato lo sella como anomalía en una lista aparte, de modo que el
+ * intento de retroceso de odómetro queda registrado en cadena y no depende de la
+ * base de datos del operador.
  */
 contract HistorialCeroKM {
     struct Evento {
         uint256 kilometraje;
+        uint8   tipoServicio;
+        bytes32 hashEvidencia;
+        address concesionaria;
+        uint256 timestamp;
+    }
+
+    struct Anomalia {
+        uint256 kilometrajeDeclarado;
+        uint256 kilometrajeVigente;
         uint8   tipoServicio;
         bytes32 hashEvidencia;
         address concesionaria;
@@ -24,8 +38,9 @@ contract HistorialCeroKM {
 
     address public admin;
 
-    mapping(string  => Evento[])  private historial;
-    mapping(string  => Vehiculo)  public  vehiculos;
+    mapping(string  => Evento[])   private historial;
+    mapping(string  => Anomalia[]) private anomalias;
+    mapping(string  => Vehiculo)   public  vehiculos;
     mapping(address => bool)      public  concesionariasOficiales;
     mapping(address => string)    public  nombreConcesionaria;
 
@@ -36,6 +51,15 @@ contract HistorialCeroKM {
         string  indexed vin,
         address indexed concesionaria,
         uint256 kilometraje,
+        uint8   tipoServicio,
+        bytes32 hashEvidencia,
+        uint256 timestamp
+    );
+    event AnomaliaKilometraje(
+        string  indexed vin,
+        address indexed concesionaria,
+        uint256 kilometrajeDeclarado,
+        uint256 kilometrajeVigente,
         uint8   tipoServicio,
         bytes32 hashEvidencia,
         uint256 timestamp
@@ -99,18 +123,37 @@ contract HistorialCeroKM {
         emit ServicioRegistrado(vin, msg.sender, kilometrajeInicial, 0, hashEvidencia, block.timestamp);
     }
 
+    /**
+     * Registra un service. Devuelve true si se selló en el historial válido y
+     * false si el kilometraje es menor al último sellado: en ese caso el intento
+     * se sella como anomalía y el historial válido no cambia.
+     */
     function registrarServicio(
         string memory vin,
         uint256 kilometraje,
         uint8 tipoServicio,
         bytes32 hashEvidencia
-    ) external soloConcesionaria {
+    ) external soloConcesionaria returns (bool) {
         require(vehiculos[vin].existe, "Vehiculo no registrado");
         require(tipoServicio > 0, "Tipo 0 reservado para alta");
 
+        // Todo vehículo registrado tiene al menos el evento de alta.
         Evento[] storage eventos = historial[vin];
-        if (eventos.length > 0) {
-            require(kilometraje >= eventos[eventos.length - 1].kilometraje, "Kilometraje regresivo");
+        uint256 kmVigente = eventos[eventos.length - 1].kilometraje;
+
+        if (kilometraje < kmVigente) {
+            anomalias[vin].push(Anomalia({
+                kilometrajeDeclarado: kilometraje,
+                kilometrajeVigente:   kmVigente,
+                tipoServicio:         tipoServicio,
+                hashEvidencia:        hashEvidencia,
+                concesionaria:        msg.sender,
+                timestamp:            block.timestamp
+            }));
+            emit AnomaliaKilometraje(
+                vin, msg.sender, kilometraje, kmVigente, tipoServicio, hashEvidencia, block.timestamp
+            );
+            return false;
         }
 
         eventos.push(Evento({
@@ -122,6 +165,15 @@ contract HistorialCeroKM {
         }));
 
         emit ServicioRegistrado(vin, msg.sender, kilometraje, tipoServicio, hashEvidencia, block.timestamp);
+        return true;
+    }
+
+    function obtenerAnomalias(string memory vin) external view returns (Anomalia[] memory) {
+        return anomalias[vin];
+    }
+
+    function cantidadAnomalias(string memory vin) external view returns (uint256) {
+        return anomalias[vin].length;
     }
 
     function obtenerHistorial(string memory vin) external view returns (Evento[] memory) {

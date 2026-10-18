@@ -43,12 +43,80 @@ describe("consulta pública", () => {
     expect(screen.getAllByText("No confirmado en el contrato actual").length).toBe(2);
   });
 
+  it("distingue la anomalía sellada en cadena", async () => {
+    const datos = consulta({ anomalias: 1 });
+    const anomalia = datos.eventos[2];
+    Object.assign(anomalia, { verificado: true, tx_hash: "0x" + "3".repeat(64), chain_timestamp: "2026-09-01T10:00:00Z" });
+    api.consultaPublica.mockResolvedValue(datos);
+    renderApp("/consulta");
+    buscar("AB123CD");
+    expect(await screen.findByText("Anomalía sellada en cadena")).toBeTruthy();
+    expect(screen.queryByText("Sin sellado on-chain")).toBeNull();
+    expect(screen.getAllByText("Ver transacción en Polygonscan").length).toBe(3);
+  });
+
+  it("abre el historial desde un enlace compartido", async () => {
+    api.consultaPublica.mockResolvedValue(consulta({ anomalias: 0 }));
+    renderApp("/consulta?q=ab123cd");
+    expect(await screen.findByText("Confiabilidad alta")).toBeTruthy();
+    expect(api.consultaPublica).toHaveBeenCalledWith("AB123CD");
+  });
+
+  it("comparte el enlace, lo copia si no hay menú de compartir y descarga el PDF", async () => {
+    api.consultaPublica.mockResolvedValue(consulta({ anomalias: 0 }));
+    renderApp("/consulta");
+    buscar("AB123CD");
+    await screen.findByText("Confiabilidad alta");
+
+    const whatsapp = screen.getByText("WhatsApp").closest("a");
+    expect(decodeURIComponent(whatsapp.getAttribute("href"))).toContain("/consulta?q=AB123CD");
+
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    fireEvent.click(screen.getByText("Compartir enlace"));
+    await vi.waitFor(() => expect(share).toHaveBeenCalled());
+    expect(share.mock.calls[0][0].url).toContain("/consulta?q=AB123CD");
+
+    share.mockRejectedValueOnce(new Error("cancelado"));
+    fireEvent.click(screen.getByText("Compartir enlace"));
+    await vi.waitFor(() => expect(share).toHaveBeenCalledTimes(2));
+
+    delete navigator.share;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fireEvent.click(screen.getByText("Compartir enlace"));
+    expect(await screen.findByText("Enlace copiado")).toBeTruthy();
+
+    writeText.mockRejectedValueOnce(new Error("sin permiso"));
+    fireEvent.click(screen.getByText("Compartir enlace"));
+    expect(await screen.findByText(/consulta\?q=AB123CD/)).toBeTruthy();
+
+    const imprimir = vi.spyOn(window, "print").mockImplementation(() => {});
+    fireEvent.click(screen.getByText("Descargar PDF"));
+    expect(imprimir).toHaveBeenCalled();
+  });
+
   it("muestra un historial sin anomalías con confiabilidad alta", async () => {
     api.consultaPublica.mockResolvedValue(consulta({ anomalias: 0 }));
     renderApp("/consulta");
     buscar("AB123CD");
     expect(await screen.findByText("Confiabilidad alta")).toBeTruthy();
     expect(screen.queryByText(/Historial con/)).toBeNull();
+  });
+
+  it("avisa que el servidor está arrancando si la consulta tarda", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let responder;
+    api.consultaPublica.mockReturnValue(new Promise((ok) => { responder = ok; }));
+    renderApp("/consulta");
+    buscar("AB123CD");
+    expect(screen.queryByText(/El servidor se está iniciando/)).toBeNull();
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(screen.getByText(/El servidor se está iniciando/)).toBeTruthy();
+    responder(consulta({ anomalias: 0 }));
+    expect(await screen.findByText("Confiabilidad alta")).toBeTruthy();
+    expect(screen.queryByText(/El servidor se está iniciando/)).toBeNull();
+    vi.useRealTimers();
   });
 
   it("informa que el vehículo no existe", async () => {

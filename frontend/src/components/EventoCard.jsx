@@ -27,7 +27,7 @@ export default function EventoCard({ evento, esAlta }) {
               </span>
             )}
             <span className="text-xs text-slate-500">
-              {anomalo ? "No sellado en cadena" : fmtDate(evento.chain_timestamp)}
+              {anomalo && !evento.chain_timestamp ? "Sin fecha en cadena" : fmtDate(evento.chain_timestamp)}
             </span>
           </div>
           <div className="mt-1 text-2xl font-semibold">
@@ -67,13 +67,19 @@ export default function EventoCard({ evento, esAlta }) {
             rel="noreferrer"
             className="text-brand-500 hover:text-brand-600 inline-flex items-center gap-1"
           >
-            Ver transaccion en Polygonscan <ExternalLink size={12} />
+            Ver transacción en Polygonscan <ExternalLink size={12} />
           </a>
-        ) : anomalo ? (
-          <span className="text-amber-700 inline-flex items-center gap-1">
+        ) : null}
+        {anomalo && evento.verificado && (
+          <span className="text-amber-700 inline-flex items-center gap-1" title="El contrato selló el intento como anomalía: no puede borrarse">
+            <AlertTriangle size={12} /> Anomalía sellada en cadena
+          </span>
+        )}
+        {anomalo && !evento.verificado && (
+          <span className="text-amber-700 inline-flex items-center gap-1" title="Registro anterior al sellado de anomalías en el contrato">
             <AlertTriangle size={12} /> Sin sellado on-chain
           </span>
-        ) : null}
+        )}
         {!anomalo && !evento.verificado && (
           <span className="text-amber-700 inline-flex items-center gap-1" title="La transacción no aparece en el contrato actual (posible registro contra un deploy anterior)">
             <AlertTriangle size={12} /> No confirmado en el contrato actual

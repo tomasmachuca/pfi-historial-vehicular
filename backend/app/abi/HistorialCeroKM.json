@@ -1,10 +1,59 @@
 {
-  "address": "0xEF9c8Cec5453047a92bd83889C8148C541176fa0",
+  "address": "0xB6B07B384265D5087497863fd12977ecf1f98Bbb",
   "abi": [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
       "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "vin",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "concesionaria",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "kilometrajeDeclarado",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "kilometrajeVigente",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "tipoServicio",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "hashEvidencia",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "AnomaliaKilometraje",
+      "type": "event"
     },
     {
       "anonymous": false,
@@ -145,6 +194,25 @@
           "type": "string"
         }
       ],
+      "name": "cantidadAnomalias",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "vin",
+          "type": "string"
+        }
+      ],
       "name": "cantidadEventos",
       "outputs": [
         {
@@ -253,6 +321,57 @@
           "type": "string"
         }
       ],
+      "name": "obtenerAnomalias",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "kilometrajeDeclarado",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "kilometrajeVigente",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "tipoServicio",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "hashEvidencia",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "address",
+              "name": "concesionaria",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct HistorialCeroKM.Anomalia[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "vin",
+          "type": "string"
+        }
+      ],
       "name": "obtenerHistorial",
       "outputs": [
         {
@@ -315,7 +434,13 @@
         }
       ],
       "name": "registrarServicio",
-      "outputs": [],
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
       "stateMutability": "nonpayable",
       "type": "function"
     },

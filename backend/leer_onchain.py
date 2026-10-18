@@ -7,7 +7,7 @@ Uso:
 """
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from web3 import Web3
@@ -15,7 +15,7 @@ from web3.middleware import ExtraDataToPOAMiddleware
 
 # --- Config de la red (los mismos valores del .env, hardcodeables si querés) ---
 RPC_URL = "https://polygon-amoy-bor-rpc.publicnode.com"
-CONTRACT = "0xEF9c8Cec5453047a92bd83889C8148C541176fa0"
+CONTRACT = "0xB6B07B384265D5087497863fd12977ecf1f98Bbb"
 ABI_PATH = Path(__file__).resolve().parent / "app" / "abi" / "HistorialCeroKM.json"
 
 TIPOS = {0: "Alta / 0km", 1: "Service", 2: "Reparacion", 3: "Inspeccion"}
@@ -36,7 +36,7 @@ def main(vin: str) -> None:
         print("El VIN no existe on-chain.")
         return
 
-    fa = datetime.fromtimestamp(fecha_alta, tz=timezone.utc)
+    fa = datetime.fromtimestamp(fecha_alta, tz=UTC)
     print(f"km inicial (alta 0km): {km_inicial:,} km")
     print(f"concesionaria de alta: {alta}")
     print(f"fecha de alta:         {fa:%Y-%m-%d %H:%M UTC}\n")
@@ -45,7 +45,7 @@ def main(vin: str) -> None:
     print(f"Historial on-chain ({len(eventos)} eventos):")
     for i, e in enumerate(eventos):
         km, tipo, hash_ev, conces, ts = e
-        f = datetime.fromtimestamp(ts, tz=timezone.utc)
+        f = datetime.fromtimestamp(ts, tz=UTC)
         print(
             f"  #{i}  {km:>10,} km  {TIPOS.get(tipo, tipo):<12}  "
             f"{f:%Y-%m-%d %H:%M}  by {conces[:10]}...  "
