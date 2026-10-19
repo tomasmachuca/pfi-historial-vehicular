@@ -17,6 +17,7 @@ participante adjunta en la tarea T5. Las credenciales van por variables de entor
     set TRAZARG_PASSWORD_1=<contraseña>
     set TRAZARG_EMAIL_2=<correo de la concesionaria 2>
     set TRAZARG_PASSWORD_2=<contraseña>
+    (o, en lugar de correos y contraseñas, TRAZARG_TOKEN_1 y TRAZARG_TOKEN_2)
     python scripts/preparar_usabilidad.py
 """
 import os
@@ -51,8 +52,12 @@ def _pdf(texto: str) -> bytes:
     return salida
 
 
-def _sesion(email: str, password: str) -> requests.Session:
+def _sesion(n: int) -> requests.Session:
     s = requests.Session()
+    if token := os.environ.get(f"TRAZARG_TOKEN_{n}"):
+        s.headers["Authorization"] = f"Bearer {token}"
+        return s
+    email, password = os.environ[f"TRAZARG_EMAIL_{n}"], os.environ[f"TRAZARG_PASSWORD_{n}"]
     r = s.post(f"{API}/auth/login", json={"email": email, "password": password}, timeout=120)
     r.raise_for_status()
     s.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
@@ -88,13 +93,16 @@ def _service(s, patente, km, tipo, comprobante=True) -> dict:
 
 
 def main() -> int:
-    faltan = [v for v in ("TRAZARG_API", "TRAZARG_EMAIL_1", "TRAZARG_PASSWORD_1",
-                          "TRAZARG_EMAIL_2", "TRAZARG_PASSWORD_2") if not os.environ.get(v)]
+    faltan = ["TRAZARG_API"] if not API else []
+    for n in (1, 2):
+        if not os.environ.get(f"TRAZARG_TOKEN_{n}") and not (
+            os.environ.get(f"TRAZARG_EMAIL_{n}") and os.environ.get(f"TRAZARG_PASSWORD_{n}")
+        ):
+            faltan.append(f"TRAZARG_TOKEN_{n} (o TRAZARG_EMAIL_{n} y TRAZARG_PASSWORD_{n})")
     if faltan:
         print("Faltan variables de entorno:", ", ".join(faltan), file=sys.stderr)
         return 1
-    s1 = _sesion(os.environ["TRAZARG_EMAIL_1"], os.environ["TRAZARG_PASSWORD_1"])
-    s2 = _sesion(os.environ["TRAZARG_EMAIL_2"], os.environ["TRAZARG_PASSWORD_2"])
+    s1, s2 = _sesion(1), _sesion(2)
 
     a = _alta(s1, "Toyota", "Corolla", "Gris")
     _service(s1, a, 10_000, 1)

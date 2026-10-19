@@ -15,7 +15,7 @@ export default function Layout({ children }) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Logo size={20} />
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500">
               Historial vehicular verificable · Tesis PFI 2026
             </span>
           </div>

@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, ShieldCheck, ExternalLink, AlertTriangle, Share2, FileDown } from "lucide-react";
 import { api } from "../lib/api";
 import { fmtNumber, fmtDate, shorten, txUrl } from "../lib/format";
-import KilometrajeChart from "../components/KilometrajeChart";
-import ServiciosChart from "../components/ServiciosChart";
 import EventoCard from "../components/EventoCard";
 import ScoreCard from "../components/ScoreCard";
+
+// Los gráficos usan la biblioteca más pesada de la interfaz: se descargan recién
+// cuando hay un resultado, para que la búsqueda cargue rápido en el celular.
+const KilometrajeChart = lazy(() => import("../components/KilometrajeChart"));
+const ServiciosChart = lazy(() => import("../components/ServiciosChart"));
 
 export default function ConsultaPublica() {
   const [params, setParams] = useSearchParams();
@@ -61,7 +64,7 @@ export default function ConsultaPublica() {
       <div className="text-center mb-8">
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Consultar historial</h1>
         <p className="text-slate-600 mt-3 max-w-lg mx-auto">
-          Ingresa el VIN o la patente del vehiculo. La consulta es gratuita y no requiere cuenta.
+          Ingresá el VIN o la patente del vehículo. La consulta es gratuita y no requiere cuenta.
         </p>
       </div>
 
@@ -107,7 +110,7 @@ export default function ConsultaPublica() {
       )}
 
       {!loading && !data && !error && (
-        <p className="text-center text-sm text-slate-400 mt-10">
+        <p className="text-center text-sm text-slate-500 mt-10">
           El historial se reconstruye leyendo los eventos sellados en Polygon.
         </p>
       )}
@@ -156,7 +159,7 @@ function Resultado({ data }) {
                 </span>
               ) : (
                 <span className="badge bg-slate-100 text-slate-600">
-                  <ShieldCheck size={14} /> Sin registro en el contrato actual
+                  <ShieldCheck size={14} /> Sin registros verificados en blockchain
                 </span>
               )}
               {tieneAnomalias && (
@@ -183,12 +186,13 @@ function Resultado({ data }) {
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500">
+          <span className="font-medium text-slate-600">Datos para verificar por cuenta propia:</span>
           <span>Contrato: <span className="font-mono">{shorten(cadena.contrato, 10, 6)}</span></span>
           <span>Chain ID: {cadena.chain_id}</span>
           <span>Eventos en cadena: {cadena.cantidad_eventos_on_chain}</span>
           {cadena.tx_hash_alta && (
             <a href={txUrl(cadena.tx_hash_alta)} target="_blank" rel="noreferrer" className="text-brand-500 hover:text-brand-600 inline-flex items-center gap-1">
-              tx alta <ExternalLink size={12} />
+              Transacción del alta <ExternalLink size={12} />
             </a>
           )}
         </div>
@@ -199,8 +203,10 @@ function Resultado({ data }) {
       <ScoreCard score={data.score} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <KilometrajeChart eventos={eventos} />
-        <ServiciosChart eventos={eventos} />
+        <Suspense fallback={<div className="skeleton h-56 rounded-xl lg:col-span-2" />}>
+          <KilometrajeChart eventos={eventos} />
+          <ServiciosChart eventos={eventos} />
+        </Suspense>
       </div>
 
       <div>

@@ -131,6 +131,10 @@ def test_sin_eventos_verificados_el_puntaje_queda_limitado():
     r = calcular_score(eventos, AHORA)
     assert r["puntaje"] == TOPE_SIN_VERIFICACION
     assert puntos(r, "antiguedad") == 0
+    # El tope ya explica la falta de verificación: la razón de antigüedad no se repite.
+    textos = [x["texto"] for x in r["razones"]]
+    assert any("se limita a 39" in t for t in textos)
+    assert not any("No hay registros confirmados" in t for t in textos)
 
 
 def test_fechas_sin_zona_horaria_se_interpretan_como_utc():

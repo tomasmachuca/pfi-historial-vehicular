@@ -30,8 +30,8 @@ export default function MisVehiculos() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold">Vehiculos registrados</h1>
-          <p className="text-sm text-slate-500 mt-1">{items.length} vehiculos dados de alta por tu concesionaria</p>
+          <h1 className="text-2xl font-semibold">Vehículos registrados</h1>
+          <p className="text-sm text-slate-500 mt-1">{items.length} vehículos dados de alta por tu concesionaria</p>
         </div>
         <Link to="/vehiculos/nuevo" className="btn-primary">
           <Car size={16} /> Alta 0km
@@ -76,7 +76,7 @@ export default function MisVehiculos() {
                   </td>
                   <td className="px-5 py-3">{v.marca} {v.modelo}</td>
                   <td className="px-5 py-3">{v.anio}</td>
-                  <td className="px-5 py-3">{v.patente || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-5 py-3">{v.patente || <span className="text-slate-500">—</span>}</td>
                   <td className="px-5 py-3 text-slate-600">{fmtDate(v.creado_en)}</td>
                   <td className="px-5 py-3">
                     {v.tx_hash_alta ? (
@@ -89,7 +89,7 @@ export default function MisVehiculos() {
                         ver <ExternalLink size={12} />
                       </a>
                     ) : (
-                      <span className="text-slate-400 text-xs">pending</span>
+                      <span className="text-slate-500 text-xs">pendiente</span>
                     )}
                   </td>
                 </tr>

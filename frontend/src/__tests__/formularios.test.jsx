@@ -24,12 +24,13 @@ describe("alta de vehículo 0 km", () => {
     api.misVehiculos.mockResolvedValue(VEHICULOS);
     iniciarSesion();
     renderApp("/vehiculos/nuevo");
+    await screen.findByText("Patente", { selector: "label" });
     completar("VIN", "8AP1234567ABC8901");
     completar("Patente", "AB123CD");
     completar("Marca", "Toyota");
     completar("Modelo", "Corolla");
     fireEvent.click(screen.getByText("Registrar en cadena"));
-    expect(await screen.findByText("Vehiculo registrado en cadena")).toBeTruthy();
+    expect(await screen.findByText("Vehículo registrado en cadena")).toBeTruthy();
     const enviado = api.altaVehiculo.mock.calls[0][1];
     expect(enviado.get("vin")).toBe("8AP1234567ABC8901");
 
@@ -42,19 +43,21 @@ describe("alta de vehículo 0 km", () => {
     api.misVehiculos.mockResolvedValue(VEHICULOS);
     iniciarSesion();
     renderApp("/vehiculos/nuevo");
+    await screen.findByText("Patente", { selector: "label" });
     completar("VIN", "8AP1234567ABC8901");
     completar("Patente", "AB123CD");
     completar("Marca", "Toyota");
     completar("Modelo", "Corolla");
     fireEvent.click(screen.getByText("Registrar en cadena"));
     fireEvent.click(await screen.findByText("Ir a la lista"));
-    expect(await screen.findByText("Vehiculos registrados")).toBeTruthy();
+    expect(await screen.findByText("Vehículos registrados")).toBeTruthy();
   });
 
   it("muestra el error del backend y permite cancelar", async () => {
     api.altaVehiculo.mockRejectedValue(new Error("VIN ya registrado"));
     iniciarSesion();
     renderApp("/vehiculos/nuevo");
+    await screen.findByText("Patente", { selector: "label" });
     completar("VIN", "8AP1234567ABC8901");
     completar("Patente", "AB123CD");
     completar("Marca", "Toyota");
@@ -70,9 +73,10 @@ describe("registro de service", () => {
     api.registrarServicio.mockResolvedValue({ km_regresivo: false, block_number: 99, con_evidencia: false, tx_hash: "0x" + "d".repeat(64) });
     iniciarSesion();
     renderApp("/servicios/nuevo");
-    completar("VIN o patente del vehiculo", "AB123CD");
+    await screen.findByText("VIN o patente del vehículo", { selector: "label" });
+    completar("VIN o patente del vehículo", "AB123CD");
     completar("Kilometraje", "10000");
-    completar("Descripcion (opcional)", "Cambio de aceite y filtros");
+    completar("Descripción (opcional)", "Cambio de aceite y filtros");
     fireEvent.click(screen.getByText("Sellar en blockchain"));
     expect(await screen.findByText("Service registrado en cadena")).toBeTruthy();
     expect(screen.getByText("Registrado sin comprobante adjunto.")).toBeTruthy();
@@ -87,12 +91,13 @@ describe("registro de service", () => {
     api.estadoRed.mockResolvedValue({ block_number: 1, chain_id: 80002, contract_address: "0xabc" });
     iniciarSesion();
     renderApp("/servicios/nuevo");
-    completar("VIN o patente del vehiculo", "AB123CD");
+    await screen.findByText("VIN o patente del vehículo", { selector: "label" });
+    completar("VIN o patente del vehículo", "AB123CD");
     completar("Kilometraje", "10000");
     const archivo = new File(["orden"], "orden.pdf", { type: "application/pdf" });
     fireEvent.change(document.querySelector("input[type=file]"), { target: { files: [archivo] } });
     fireEvent.click(screen.getByText("Sellar en blockchain"));
-    expect(await screen.findByText("Bloque #100")).toBeTruthy();
+    expect(await screen.findByText("Quedó sellado de forma permanente en el bloque #100.")).toBeTruthy();
     expect(api.registrarServicio.mock.calls[0][1].get("archivo").name).toBe("orden.pdf");
     fireEvent.click(screen.getByText("Volver al dashboard"));
     expect(await screen.findByText("Hola, Concesionaria Norte")).toBeTruthy();
@@ -106,7 +111,8 @@ describe("registro de service", () => {
     });
     iniciarSesion();
     renderApp("/servicios/nuevo");
-    completar("VIN o patente del vehiculo", "AB123CD");
+    await screen.findByText("VIN o patente del vehículo", { selector: "label" });
+    completar("VIN o patente del vehículo", "AB123CD");
     completar("Kilometraje", "18400");
     expect(screen.getByText("18.400 km")).toBeTruthy();
     fireEvent.click(screen.getByText("Sellar en blockchain"));
@@ -119,7 +125,8 @@ describe("registro de service", () => {
     api.registrarServicio.mockRejectedValue(new Error("Vehiculo no registrado"));
     iniciarSesion();
     renderApp("/servicios/nuevo");
-    completar("VIN o patente del vehiculo", "ZZ999ZZ");
+    await screen.findByText("VIN o patente del vehículo", { selector: "label" });
+    completar("VIN o patente del vehículo", "ZZ999ZZ");
     fireEvent.click(screen.getByText("Sellar en blockchain"));
     expect(await screen.findByText("Vehiculo no registrado")).toBeTruthy();
     fireEvent.click(screen.getByText("Cancelar"));

@@ -29,7 +29,7 @@ def consulta_publica(identificador: str, db: Session = Depends(get_db)):
         .first()
     )
     if not v:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Vehiculo no encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Vehículo no encontrado")
 
     bc = get_blockchain()
     on_chain = bc.obtener_historial(v.vin)

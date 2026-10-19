@@ -82,7 +82,7 @@ export default function EventoCard({ evento, esAlta }) {
         )}
         {!anomalo && !evento.verificado && (
           <span className="text-amber-700 inline-flex items-center gap-1" title="La transacción no aparece en el contrato actual (posible registro contra un deploy anterior)">
-            <AlertTriangle size={12} /> No confirmado en el contrato actual
+            <AlertTriangle size={12} /> No verificado en blockchain
           </span>
         )}
         {evento.archivo_url && (

@@ -12,6 +12,7 @@ Uso (las credenciales van por variables de entorno, no por argumentos):
     set TRAZARG_API=https://<backend>          (sin barra final)
     set TRAZARG_EMAIL=<correo de la concesionaria de prueba>
     set TRAZARG_PASSWORD=<contraseña>
+    (o, en lugar de correo y contraseña, set TRAZARG_TOKEN=<token de sesión>)
     set RPC_URL=https://polygon-amoy-bor-rpc.publicnode.com
     set POL_USD=0.096                          (opcional, para convertir a dólares)
     python scripts/medir_escritura.py
@@ -29,6 +30,7 @@ from web3 import Web3
 API = os.environ.get("TRAZARG_API", "").rstrip("/")
 EMAIL = os.environ.get("TRAZARG_EMAIL", "")
 PASSWORD = os.environ.get("TRAZARG_PASSWORD", "")
+TOKEN = os.environ.get("TRAZARG_TOKEN", "")
 RPC_URL = os.environ.get("RPC_URL", "https://polygon-amoy-bor-rpc.publicnode.com")
 POL_USD = float(os.environ.get("POL_USD", "0") or 0)
 SERVICES = int(os.environ.get("SERVICES", "4"))
@@ -48,17 +50,20 @@ def _percentil(valores, p):
 
 
 def main() -> int:
-    if not (API and EMAIL and PASSWORD):
-        print("Faltan TRAZARG_API, TRAZARG_EMAIL o TRAZARG_PASSWORD.", file=sys.stderr)
+    if not (API and (TOKEN or (EMAIL and PASSWORD))):
+        print("Faltan TRAZARG_API y TRAZARG_TOKEN, o TRAZARG_EMAIL y TRAZARG_PASSWORD.", file=sys.stderr)
         return 1
 
     sesion = requests.Session()
     # Despierta el servidor para no medir el arranque en frío como latencia de escritura.
     _, arranque = _cronometrar(lambda: sesion.get(f"{API}/publico/stats", timeout=120))
 
-    login = sesion.post(f"{API}/auth/login", json={"email": EMAIL, "password": PASSWORD}, timeout=60)
-    login.raise_for_status()
-    sesion.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
+    token = TOKEN
+    if not token:
+        login = sesion.post(f"{API}/auth/login", json={"email": EMAIL, "password": PASSWORD}, timeout=60)
+        login.raise_for_status()
+        token = login.json()["access_token"]
+    sesion.headers["Authorization"] = f"Bearer {token}"
 
     sufijo = datetime.now(UTC).strftime("%m%d%H%M%S")
     vin, patente = f"TZPRUEBA{sufijo}", f"TZ{sufijo[-5:]}"

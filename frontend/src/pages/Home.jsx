@@ -51,7 +51,7 @@ export default function Home() {
 
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3 animate-fade-up [animation-delay:180ms]">
             <Link to="/consulta" className="btn-primary shadow-lg shadow-black/50">
-              <Search size={16} /> Consultar un vehiculo
+              <Search size={16} /> Consultar un vehículo
             </Link>
             <Link to="/login" className="btn-ghost-light">
               <Building2 size={16} /> Acceso concesionarias
@@ -67,7 +67,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
               icon={<Car size={18} />}
-              label="Vehiculos registrados"
+              label="Vehículos registrados"
               value={fmtNumber(stats?.vehiculos_registrados ?? 0)}
               hint="Altas 0km selladas en cadena"
               loading={cargando}

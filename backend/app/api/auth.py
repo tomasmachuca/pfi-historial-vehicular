@@ -21,7 +21,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     c = db.query(Concesionaria).filter(Concesionaria.email == req.email).first()
     if not c or not verify_password(req.password, c.password_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales invalidas")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales inválidas")
     if not c.activa:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Concesionaria desactivada")
 

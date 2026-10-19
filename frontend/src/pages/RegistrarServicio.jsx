@@ -92,7 +92,7 @@ export default function RegistrarServicio() {
               <CheckCircle2 className="mx-auto text-emerald-500 mb-3" size={42} />
               <h2 className="text-xl font-semibold">Service registrado en cadena</h2>
               <p className="text-sm text-slate-600 mt-2">
-                Bloque #{resultado.block_number}
+                Quedó sellado de forma permanente en el bloque #{resultado.block_number}.
               </p>
               {!resultado.con_evidencia && (
                 <p className="text-xs text-slate-500 mt-1">Registrado sin comprobante adjunto.</p>
@@ -131,7 +131,7 @@ export default function RegistrarServicio() {
 
       <form onSubmit={onSubmit} className="card p-6 space-y-4">
         <div>
-          <label className="label">VIN o patente del vehiculo</label>
+          <label className="label">VIN o patente del vehículo</label>
           <input
             className="input font-mono"
             name="vin"
@@ -172,7 +172,7 @@ export default function RegistrarServicio() {
         </div>
 
         <div>
-          <label className="label">Descripcion (opcional)</label>
+          <label className="label">Descripción (opcional)</label>
           <textarea
             className="input"
             rows="3"
@@ -212,7 +212,7 @@ export default function RegistrarServicio() {
             Cancelar
           </button>
           <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? "Firmando..." : "Sellar en blockchain"}
+            {loading ? "Sellando, puede tardar unos segundos..." : "Sellar en blockchain"}
           </button>
         </div>
       </form>

@@ -19,12 +19,12 @@ export default function Navbar() {
           <Logo size={26} />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          <NavItem to="/consulta" icon={<Search size={16} />} label="Consulta publica" />
+        <nav className="flex items-center gap-1">
+          <NavItem to="/consulta" icon={<Search size={16} />} label="Consulta pública" />
           {session && (
             <>
               <NavItem to="/dashboard" icon={<LayoutDashboard size={16} />} label="Dashboard" />
-              <NavItem to="/vehiculos" icon={<Car size={16} />} label="Vehiculos" />
+              <NavItem to="/vehiculos" icon={<Car size={16} />} label="Vehículos" />
               <NavItem to="/servicios/nuevo" icon={<Wrench size={16} />} label="Cargar service" />
             </>
           )}
@@ -45,7 +45,7 @@ export default function Navbar() {
                   navigate("/");
                 }}
                 className="btn-secondary"
-                title="Cerrar sesion"
+                title="Cerrar sesión"
               >
                 <LogOut size={16} />
               </button>
@@ -65,8 +65,10 @@ function NavItem({ to, icon, label }) {
   return (
     <NavLink
       to={to}
+      aria-label={label}
+      title={label}
       className={({ isActive }) =>
-        `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ${
+        `flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-lg text-sm transition ${
           isActive
             ? "bg-brand-50 text-brand-700 font-medium"
             : "text-slate-600 hover:bg-slate-100"
@@ -74,7 +76,8 @@ function NavItem({ to, icon, label }) {
       }
     >
       {icon}
-      {label}
+      {/* En el celular el menú muestra solo los íconos, para que no desaparezca. */}
+      <span className="hidden md:inline">{label}</span>
     </NavLink>
   );
 }

@@ -27,7 +27,7 @@ export default function KilometrajeChart({ eventos }) {
   return (
     <div className="card p-5">
       <h3 className="text-sm font-medium text-slate-600 mb-4">
-        Evolucion de kilometraje
+        Evolución del kilometraje
       </h3>
       <div style={{ width: "100%", height: 240 }}>
         <ResponsiveContainer>

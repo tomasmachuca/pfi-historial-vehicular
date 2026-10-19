@@ -36,7 +36,7 @@ async def registrar_service(
         .first()
     )
     if not v:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Vehiculo no registrado (VIN o patente no encontrados)")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Vehículo no registrado (VIN o patente no encontrados)")
 
     # El comprobante es opcional: sin él se sella igual el evento (km, tipo,
     # concesionaria y fecha) con hash cero, y el scoring lo pondera como un

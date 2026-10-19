@@ -71,7 +71,7 @@ describe("navegación y sesión", () => {
   it("cierra la sesión desde la barra de navegación", async () => {
     iniciarSesion();
     renderApp("/dashboard");
-    fireEvent.click(await screen.findByTitle("Cerrar sesion"));
+    fireEvent.click(await screen.findByTitle("Cerrar sesión"));
     expect(await screen.findByRole("link", { name: "Ingresar" })).toBeTruthy();
     expect(localStorage.getItem("historial0km.session")).toBeNull();
   });
@@ -122,7 +122,7 @@ describe("vehículos de la concesionaria", () => {
     iniciarSesion();
     renderApp("/vehiculos");
     expect(await screen.findByText("9BWZZZ377VT004251")).toBeTruthy();
-    expect(screen.getByText("pending")).toBeTruthy();
+    expect(screen.getByText("pendiente")).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText("Filtrar por VIN, patente o modelo..."), { target: { value: "taos" } });
     expect(screen.queryByText("8AP1234567ABC8901")).toBeNull();
     expect(screen.getByText("9BWZZZ377VT004251")).toBeTruthy();

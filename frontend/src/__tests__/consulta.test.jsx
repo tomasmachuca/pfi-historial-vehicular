@@ -39,8 +39,8 @@ describe("consulta pública", () => {
     renderApp("/consulta");
     buscar("AB123CD");
     expect(await screen.findByText("Historial con 2 anomalías de kilometraje")).toBeTruthy();
-    expect(screen.getByText("Sin registro en el contrato actual")).toBeTruthy();
-    expect(screen.getAllByText("No confirmado en el contrato actual").length).toBe(2);
+    expect(screen.getByText("Sin registros verificados en blockchain")).toBeTruthy();
+    expect(screen.getAllByText("No verificado en blockchain").length).toBe(2);
   });
 
   it("distingue la anomalía sellada en cadena", async () => {

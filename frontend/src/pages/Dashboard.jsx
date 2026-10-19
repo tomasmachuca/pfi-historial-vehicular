@@ -66,7 +66,7 @@ export default function Dashboard() {
 
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="font-medium">Ultimos vehiculos</h2>
+          <h2 className="font-medium">Últimos vehículos</h2>
           <Link to="/vehiculos" className="text-sm text-brand-500 hover:text-brand-600 inline-flex items-center gap-1">
             Ver todos <ArrowRight size={14} />
           </Link>
@@ -101,7 +101,7 @@ export default function Dashboard() {
                     </span>
                   </td>
                   <td className="px-5 py-3">{v.marca} {v.modelo} <span className="text-slate-500">({v.anio})</span></td>
-                  <td className="px-5 py-3">{v.patente || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-5 py-3">{v.patente || <span className="text-slate-500">—</span>}</td>
                   <td className="px-5 py-3 text-slate-600">{fmtDate(v.creado_en)}</td>
                 </tr>
               ))}

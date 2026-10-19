@@ -233,7 +233,8 @@ def calcular_score(eventos: list[EventoScore], ahora: datetime) -> dict:
             f"Por tener anomalías de kilometraje, el puntaje se limita a {TOPE_CON_ANOMALIAS}.",
             "negativo",
         ))
-    if not any(e.verificado for e in legitimos) and puntaje > TOPE_SIN_VERIFICACION:
+    sin_verificacion = not any(e.verificado for e in legitimos) and puntaje > TOPE_SIN_VERIFICACION
+    if sin_verificacion:
         puntaje = TOPE_SIN_VERIFICACION
         topes.append(_razon(
             "Ningún evento está confirmado en el contrato actual: "
@@ -243,7 +244,13 @@ def calcular_score(eventos: list[EventoScore], ahora: datetime) -> dict:
 
     # Primero lo que resta confianza: es lo que el comprador necesita ver antes.
     orden = {"negativo": 0, "neutro": 1, "positivo": 2}
-    razones = topes + sorted((c["razon"] for c in componentes), key=lambda r: orden[r["tipo"]])
+    # Si se aplicó el tope por falta de verificación, la razón de antigüedad
+    # ("no hay registros confirmados") lo repetiría: se omite.
+    omitir = {"antiguedad"} if sin_verificacion else set()
+    razones = topes + sorted(
+        (c["razon"] for c in componentes if c["clave"] not in omitir),
+        key=lambda r: orden[r["tipo"]],
+    )
 
     return {
         "puntaje": puntaje,

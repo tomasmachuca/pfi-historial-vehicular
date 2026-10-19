@@ -46,7 +46,7 @@ export default function AltaVehiculo() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
         <div className="card p-8 text-center">
           <CheckCircle2 className="mx-auto text-emerald-500 mb-3" size={42} />
-          <h2 className="text-xl font-semibold">Vehiculo registrado en cadena</h2>
+          <h2 className="text-xl font-semibold">Vehículo registrado en cadena</h2>
           <p className="text-sm text-slate-600 mt-2">VIN {resultado.vin}</p>
           {resultado.tx_hash_alta && (
             <a
@@ -100,7 +100,7 @@ export default function AltaVehiculo() {
             Cancelar
           </button>
           <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? "Firmando..." : "Registrar en cadena"}
+            {loading ? "Sellando, puede tardar unos segundos..." : "Registrar en cadena"}
           </button>
         </div>
       </form>
